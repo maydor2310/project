@@ -5,9 +5,10 @@ import React, { useState, useEffect } from "react";
 import { Task } from "./assets/Task"; 
 import "./App.css";
 
-// אם אין לך קומפוננטות Header ו-Footer תקינות, נשנה אותן ל-null כדי למנוע קריסה
-const Header = () => null; // ⚠️ אם ה-Header שלך גורם לקריסה, השאר אותו ככה
-const Footer = () => null; // ⚠️ אם ה-Footer שלך גורם לקריסה, השאר אותו ככה
+// ⚠️ תיקון: אם קומפוננטות Header ו-Footer אינן קיימות או מכילות שגיאות, 
+// אנחנו מגדירים אותן כ-null זמנית כדי למנוע קריסה של המסך הלבן.
+const Header = () => null; 
+const Footer = () => null;
 
 const STORAGE_KEY = 'myTasksList';
 
@@ -20,10 +21,11 @@ const loadTasks = (): Task[] => {
         }
         // המרה מ-JSON וטיפול בטייפים
         const parsedTasks = JSON.parse(jsonTasks);
-        // ודא שהאובייקטים הם אכן Tasks (למרות שהם מאוחסנים כנתוני JSON פשוטים)
-        return parsedTasks.map((item: Task) => ({
-            ...item
-        }));
+        // ודא שהתוצאה היא מערך, אם לא, תחזיר מערך ריק.
+        if (!Array.isArray(parsedTasks)) {
+            return [];
+        }
+        return parsedTasks;
     } catch (e) {
         console.error("Error loading tasks from LocalStorage:", e);
         return [];
