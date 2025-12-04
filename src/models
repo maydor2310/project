@@ -1,1 +1,18 @@
+// src/models/Task.ts
 
+export class Task {
+  // 2. הגדרת מאפיינים (properties) עם טיפוסי נתונים
+  public id: string;
+  public name: string;
+  public completed: boolean;
+  public createdAt: Date;
+
+  // Constructor
+  constructor(name: string) {
+    // יצירת מזהה ייחודי (ID) באמצעות תאריך + מספר רנדומלי
+    this.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    this.name = name;
+    this.completed = false; // ברירת מחדל: לא הושלמה
+    this.createdAt = new Date(); // תאריך יצירת המטלה
+  }
+}
