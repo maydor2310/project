@@ -1,1 +1,15 @@
 
+// src/models/Task.ts
+export class Task {
+  public id: string;
+  public name: string;
+  public completed: boolean;
+  public createdAt: string;
+
+  constructor(name: string) {
+    this.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    this.name = name;
+    this.completed = false;
+    this.createdAt = new Date().toISOString();
+  }
+}
