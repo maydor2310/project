@@ -1,7 +1,8 @@
 // src/App.tsx
 
 import React, { useState, useEffect } from "react";
-import { Task } from "./models/Task"; // ייבוא המחלקה שלנו
+// 💡 חשוב: ה-Import עודכן כדי להתאים לנתיב החדש: src/assets/Task.ts
+import { Task } from "./assets/Task"; 
 import "./App.css";
 
 // אם יש לך קומפוננטות Header ו-Footer מוגדרות:
@@ -10,14 +11,14 @@ import Footer from "./components/Footer";
 
 const STORAGE_KEY = 'myTasksList'; // מפתח לשמירה ב-localStorage
 
-// פונקציה שמנסה לטעון נתונים מ-localStorage (שלב 6)
+// 6. פונקציה שמנסה לטעון נתונים מ-localStorage
 const loadTasks = (): Task[] => {
     try {
         const jsonTasks = localStorage.getItem(STORAGE_KEY);
         if (jsonTasks === null) {
             return []; // אם אין נתונים, מחזירים מערך ריק
         }
-        // המרה מ-JSON לאובייקטי Task (שלב 6)
+        // המרה מ-JSON לאובייקטי Task
         return JSON.parse(jsonTasks);
     } catch (e) {
         console.error("Could not load tasks from LocalStorage", e);
@@ -34,35 +35,34 @@ function App() {
   // 10. ו-11. שמירת הנתונים ל-localStorage באמצעות useEffect
   // הפונקציה רצה בכל פעם שמשתנה 'tasks' משתנה
   useEffect(() => {
-    console.log("Saving tasks to LocalStorage...");
     // המרה של מערך ה-Task לאובייקט JSON לפני השמירה
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]); // התלות היא במערך ה-tasks
 
 
-  // 7. ו-8. פונקציה להוספת מטלה
+  // 7. ו-8. פונקציה להוספת מטלה (Create)
   const addTask = (e: React.FormEvent) => {
     e.preventDefault(); // מונע טעינה מחדש של הדף
     if (!newTaskName.trim()) return; // מונע הוספה של מטלה ריקה
 
     const newTask = new Task(newTaskName.trim());
 
-    // עדכון המצב בצורה Immutable
+    // עדכון המצב בצורה Immutable: יצירת מערך חדש (העתק + מטלה חדשה)
     setTasks((prevTasks) => [...prevTasks, newTask]);
     setNewTaskName(''); // ניקוי שדה הקלט
   };
 
-  // 9. פונקציה למחיקת מטלה
+  // 9. פונקציה למחיקת מטלה (Delete)
   const deleteTask = (id: string) => {
     // סינון המערך והחזרת כל המטלות שאינן בעלות ה-ID הנבחר
     setTasks((prevTasks) => prevTasks.filter(task => task.id !== id));
   };
 
-  // פונקציה לשינוי סטטוס (עדכון - U)
+  // פונקציה לשינוי סטטוס (Update)
   const toggleComplete = (id: string) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
-        // אם ה-ID מתאים, משנים את ה-completed לערכו ההפוך
+        // אם ה-ID מתאים, יוצרים אובייקט Task חדש עם סטטוס הפוך
         task.id === id ? { ...task, completed: !task.completed } : task
       )
     );
@@ -85,13 +85,13 @@ function App() {
             onChange={(e) => setNewTaskName(e.target.value)}
           />
           {/* 7. כפתור הוספה (Submit) */}
-          <button type="submit">➕ הוסף</button>
+          <button type="submit" disabled={!newTaskName.trim()}>➕ הוסף</button>
         </form>
         
         <hr />
 
         <h2>רשימת המטלות</h2>
-        {/* 5. הצגת טבלת HTML / רשימה */}
+        {/* 5. הצגת טבלת HTML (Read) */}
         <table>
             <thead>
                 <tr>
@@ -103,10 +103,11 @@ function App() {
             <tbody>
                 {tasks.length === 0 ? (
                     <tr>
-                        <td colSpan={3}>אין מטלות כרגע. אנא הוסף מטלה חדשה!</td>
+                        <td colSpan={3} style={{ textAlign: 'center', fontStyle: 'italic' }}>אין מטלות כרגע. אנא הוסף מטלה חדשה!</td>
                     </tr>
                 ) : (
                     tasks.map((task) => (
+                        // הוספת קו חוצה (line-through) אם המטלה הושלמה
                         <tr key={task.id} style={{ textDecoration: task.completed ? 'line-through' : 'none' }}>
                             <td>
                                 <input
@@ -118,7 +119,7 @@ function App() {
                             <td>{task.name}</td>
                             <td>
                                 {/* 9. כפתור מחיקה */}
-                                <button onClick={() => deleteTask(task.id)} style={{ color: 'red' }}>
+                                <button onClick={() => deleteTask(task.id)} style={{ color: 'red', cursor: 'pointer', border: 'none', background: 'none' }}>
                                     ❌ מחק
                                 </button>
                             </td>
