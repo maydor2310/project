@@ -12,8 +12,13 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.6",
+    "@mui/material": "^7.3.6",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.10.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -24,11 +29,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
-<<<<<<< HEAD
-    "gh-pages": "^6.2.0",
-=======
     "gh-pages": "^6.3.0",
->>>>>>> 578d22f (Add deploy scripts and gh-pages)
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
