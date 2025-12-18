@@ -14,7 +14,6 @@ export type UserRow = { // comment: type for one row saved in storage
 export const STORAGE_KEY = "forms_users_v1"; // comment: local storage key (exported)
 
 type FormState = Omit<UserRow, "id" | "createdAt">; // comment: form fields only
-
 type ErrorsState = Partial<Record<keyof FormState, string>>; // comment: map field->error message
 
 const createEmptyForm = (): FormState => ({ // comment: helper to create initial form
@@ -42,7 +41,7 @@ const saveRows = (rows: UserRow[]): void => { // comment: save rows to local sto
 }; // comment: end saveRows
 
 const generateId = (): string => { // comment: generate id with fallback
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) { // comment: check randomUUID support
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) { // comment: check support
     return crypto.randomUUID(); // comment: generate uuid
   } // comment: end if
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`; // comment: fallback id
@@ -58,7 +57,7 @@ const validate = (form: FormState): ErrorsState => { // comment: validate fields
   if (!form.email.trim()) errors.email = "Email is required"; // comment: required email
   else if (!emailOk) errors.email = "Email format is invalid"; // comment: invalid email
 
-  const phoneOk = /^[0-9]{9,10}$/.test(form.phone.trim()); // comment: israel-ish 9-10 digits
+  const phoneOk = /^[0-9]{9,10}$/.test(form.phone.trim()); // comment: 9-10 digits
   if (!form.phone.trim()) errors.phone = "Phone is required"; // comment: required phone
   else if (!phoneOk) errors.phone = "Phone must be 9-10 digits"; // comment: invalid phone
 
@@ -77,111 +76,110 @@ type Props = { // comment: component props
 }; // comment: end props
 
 const UserForm: React.FC<Props> = ({ onSaved }) => { // comment: user form component
-  const [form, setForm] = useState<FormState>(() => createEmptyForm()); // comment: single form state
+  const [form, setForm] = useState<FormState>(() => createEmptyForm()); // comment: form state
   const [errors, setErrors] = useState<ErrorsState>({}); // comment: errors state
 
-  const isValid = useMemo(() => { // comment: compute if form is valid
+  const isValid = useMemo(() => { // comment: compute if valid
     const e = validate(form); // comment: validate current form
     return Object.keys(e).length === 0; // comment: valid if no errors
-  }, [form]); // comment: recompute when form changes
+  }, [form]); // comment: dependency
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => { // comment: one handler for all fields
-    const { name, value } = e.target; // comment: read field name and value
-    setForm((prev) => ({ ...prev, [name]: value })); // comment: update specific field by name
-    setErrors((prev) => ({ ...prev, [name]: "" })); // comment: clear this field error on edit
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => { // comment: single handler
+    const { name, value } = e.target; // comment: read name + value
+    setForm((prev) => ({ ...prev, [name]: value })); // comment: update field
+    setErrors((prev) => ({ ...prev, [name]: "" })); // comment: clear field error
   }; // comment: end handleChange
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => { // comment: submit handler
-    e.preventDefault(); // comment: prevent page reload
-    const newErrors = validate(form); // comment: validate before save
-    setErrors(newErrors); // comment: set errors state
+    e.preventDefault(); // comment: prevent reload
+    const newErrors = validate(form); // comment: validate
+    setErrors(newErrors); // comment: set errors
     if (Object.keys(newErrors).length > 0) return; // comment: stop if invalid
 
-    const rows = loadRows(); // comment: read existing rows
-    const newRow: UserRow = { // comment: create new row
-      id: generateId(), // comment: unique id (safe fallback)
-      fullName: form.fullName.trim(), // comment: sanitized name
-      email: form.email.trim(), // comment: sanitized email
-      phone: form.phone.trim(), // comment: sanitized phone
-      age: form.age.trim(), // comment: age kept as string
-      city: form.city.trim(), // comment: sanitized city
+    const rows = loadRows(); // comment: load current rows
+    const newRow: UserRow = { // comment: create row
+      id: generateId(), // comment: safe id
+      fullName: form.fullName.trim(), // comment: sanitize
+      email: form.email.trim(), // comment: sanitize
+      phone: form.phone.trim(), // comment: sanitize
+      age: form.age.trim(), // comment: keep string
+      city: form.city.trim(), // comment: sanitize
       createdAt: Date.now(), // comment: timestamp
-    }; // comment: end new row
+    }; // comment: end row
 
-    const updated = [newRow, ...rows]; // comment: add row to start
-    saveRows(updated); // comment: save back to storage
+    saveRows([newRow, ...rows]); // comment: save updated list
     setForm(createEmptyForm()); // comment: reset form
     if (onSaved) onSaved(); // comment: notify parent
   }; // comment: end submit
 
-  return ( // comment: render UI
-    <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}> {/* comment: form wrapper */}
+  return ( // comment: render
+    <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}> {/* comment: wrapper */}
       <Typography variant="h5" sx={{ mb: 2 }}> {/* comment: title */}
         Forms - User Details
       </Typography>
 
-      <Stack spacing={2}> {/* comment: vertical spacing */}
+      <Stack spacing={2}> {/* comment: spacing */}
         <TextField
-          name="fullName" // comment: name used by handleChange
-          label="Full Name" // comment: UI label
-          value={form.fullName} // comment: controlled value
-          onChange={handleChange} // comment: one handler
-          error={Boolean(errors.fullName)} // comment: MUI error flag
-          helperText={errors.fullName || "Enter up to 40 characters"} // comment: message under input
-          fullWidth // comment: stretch
-          required // comment: show * and indicate required
+          name="fullName" // comment: field name
+          label="Full Name" // comment: label
+          value={form.fullName} // comment: value
+          onChange={handleChange} // comment: change handler
+          error={Boolean(errors.fullName)} // comment: error flag
+          helperText={errors.fullName || "Enter up to 40 characters"} // comment: helper
+          fullWidth // comment: full width
+          required // comment: show required *
         />
 
         <TextField
           name="email" // comment: field name
           label="Email" // comment: label
-          value={form.email} // comment: controlled value
-          onChange={handleChange} // comment: handler
+          value={form.email} // comment: value
+          onChange={handleChange} // comment: change handler
           error={Boolean(errors.email)} // comment: error flag
           helperText={errors.email || "example@domain.com"} // comment: helper
           fullWidth // comment: full width
-          required // comment: required marker
+          required // comment: required
         />
 
         <TextField
           name="phone" // comment: field name
           label="Phone" // comment: label
-          value={form.phone} // comment: controlled value
-          onChange={handleChange} // comment: handler
+          value={form.phone} // comment: value
+          onChange={handleChange} // comment: change handler
           error={Boolean(errors.phone)} // comment: error flag
           helperText={errors.phone || "9-10 digits"} // comment: helper
           fullWidth // comment: full width
-          required // comment: required marker
+          required // comment: required
         />
 
         <TextField
           name="age" // comment: field name
           label="Age" // comment: label
-          value={form.age} // comment: controlled value
-          onChange={handleChange} // comment: handler
+          value={form.age} // comment: value
+          onChange={handleChange} // comment: change handler
           error={Boolean(errors.age)} // comment: error flag
           helperText={errors.age || "12-120"} // comment: helper
           fullWidth // comment: full width
-          required // comment: required marker
+          required // comment: required
         />
 
         <TextField
           name="city" // comment: field name
           label="City" // comment: label
-          value={form.city} // comment: controlled value
-          onChange={handleChange} // comment: handler
+          value={form.city} // comment: value
+          onChange={handleChange} // comment: change handler
           error={Boolean(errors.city)} // comment: error flag
           helperText={errors.city || "Your city"} // comment: helper
           fullWidth // comment: full width
-          required // comment: required marker
+          required // comment: required
         />
 
-        <Button type="submit" variant="contained" disabled={!isValid}> {/* comment: submit button */}
+        <Button type="submit" variant="contained" disabled={!isValid}> {/* comment: submit */}
           Save to Local Storage
         </Button>
       </Stack>
-    </Box> // comment: end wrapper
-  ); // comment: end return
-}; // comment: end component
+    </Box>
+  );
+};
 
 export default UserForm; // comment: export
