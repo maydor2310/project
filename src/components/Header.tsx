@@ -77,11 +77,6 @@ const Header: React.FC = () => { // comment: header component
               <ListItemText primary="Files" />
             </ListItemButton>
 
-            <ListItemButton onClick={() => go("/forms")}>
-              <ListItemIcon><DescriptionIcon /></ListItemIcon>
-              <ListItemText primary="user managment" />
-            </ListItemButton>
-
             <ListItemButton onClick={() => go("/management")}>
               <ListItemIcon><SettingsIcon /></ListItemIcon>
               <ListItemText primary="Management" />
