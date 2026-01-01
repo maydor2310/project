@@ -1,14 +1,21 @@
-import React, { useMemo } from "react"; // comment: react
-import { Box, Card, CardContent, Typography, Grid, Button, Stack } from "@mui/material"; // comment: MUI
-import { useNavigate } from "react-router-dom"; // comment: navigation
-import PageLayout from "../components/PageLayout"; // comment: layout
+import React, { useMemo } from "react"; // react
+import {
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Stack,
+} from "@mui/material"; // MUI components
+import Grid from "@mui/material/Grid2"; // ✅ Grid החדש
+import { useNavigate } from "react-router-dom"; // navigation
+import PageLayout from "../components/PageLayout"; // layout
 
-// comment: localStorage keys
+// localStorage keys
 const COURSES_KEY = "courses_v1";
 const TEACHERS_KEY = "teachers_v1";
 const FILES_KEY = "files_v1";
 
-// comment: helper to count items in storage
+// helper to count items in storage
 const countFromStorage = (key: string): number => {
   try {
     const raw = localStorage.getItem(key);
@@ -23,7 +30,7 @@ const countFromStorage = (key: string): number => {
 const Home: React.FC = () => {
   const navigate = useNavigate();
 
-  // comment: compute stats once per render
+  // compute stats once
   const stats = useMemo(() => {
     return {
       courses: countFromStorage(COURSES_KEY),
@@ -40,7 +47,7 @@ const Home: React.FC = () => {
       </Typography>
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <Card>
             <CardContent>
               <Typography color="text.secondary">Courses</Typography>
@@ -49,7 +56,7 @@ const Home: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <Card>
             <CardContent>
               <Typography color="text.secondary">Teachers</Typography>
@@ -58,7 +65,7 @@ const Home: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <Card>
             <CardContent>
               <Typography color="text.secondary">Files</Typography>
@@ -74,24 +81,15 @@ const Home: React.FC = () => {
       </Typography>
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-        <Button
-          variant="contained"
-          onClick={() => navigate("/courses")}
-        >
+        <Button variant="contained" onClick={() => navigate("/courses")}>
           Add Course
         </Button>
 
-        <Button
-          variant="contained"
-          onClick={() => navigate("/teachers")}
-        >
+        <Button variant="contained" onClick={() => navigate("/teachers")}>
           Add Teacher
         </Button>
 
-        <Button
-          variant="contained"
-          onClick={() => navigate("/files")}
-        >
+        <Button variant="contained" onClick={() => navigate("/files")}>
           Add File
         </Button>
       </Stack>
