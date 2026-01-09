@@ -1,31 +1,45 @@
-import React from "react"; // comment: react import
-import { Routes, Route, Navigate } from "react-router-dom"; // comment: routing tools
-import Header from "./components/Header"; // comment: global header
-import Home from "./pages/Home"; // comment: dashboard page
-import Forms from "./pages/Forms"; // comment: forms page
-import Help from "./pages/Help"; // comment: help page
-import Courses from "./pages/Courses"; // comment: courses management page
-import Teachers from "./pages/Teachers"; // comment: teachers management page
-import Files from "./pages/Files"; // comment: files management page
-import Login from "./pages/Login"; // comment: login placeholder page
+import React, { useMemo, useState } from "react"; // comment: react + hooks
+import { Routes, Route, Navigate } from "react-router-dom"; // comment: routing
+import { ThemeProvider, CssBaseline } from "@mui/material"; // comment: MUI theming
+import getTheme from "./theme/theme"; // comment: theme factory
 
-const App: React.FC = () => { // comment: app component
-  return ( // comment: render app
-    <> {/* comment: wrapper */}
-      <Header /> {/* comment: global app bar + drawer */}
-      <Routes> {/* comment: app routes */}
-        <Route path="/" element={<Home />} /> {/* comment: home route */}
-        <Route path="/forms" element={<Forms />} /> {/* comment: forms route */}
-        <Route path="/help" element={<Help />} /> {/* comment: help route */}
-        <Route path="/courses" element={<Courses />} /> {/* comment: courses route */}
-        <Route path="/teachers" element={<Teachers />} /> {/* comment: teachers route */}
-        <Route path="/files" element={<Files />} /> {/* comment: files route */}
-        <Route path="/login" element={<Login />} /> {/* comment: login route */}
+import Header from "./components/Header"; // comment: existing header
+import Home from "./pages/Home";
+import Forms from "./pages/Forms";
+import Help from "./pages/Help";
+import Courses from "./pages/Courses";
+import Teachers from "./pages/Teachers";
+import Files from "./pages/Files";
+import Login from "./pages/Login";
 
-        <Route path="*" element={<Navigate to="/" replace />} /> {/* comment: fallback to home */}
-      </Routes> {/* comment: end routes */}
-    </> // comment: end wrapper
-  ); // comment: end return
-}; // comment: end component
+const App: React.FC = () => {
+  // comment: theme mode state
+  const [mode, setMode] = useState<"light" | "dark">(
+    (localStorage.getItem("theme") as "light" | "dark") || "light"
+  );
 
-export default App; // comment: export
+  // comment: memoized theme
+  const theme = useMemo(() => getTheme(mode), [mode]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+
+      {/* Header בלי props – כמו שהיה לך */}
+      <Header />
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/forms" element={<Forms />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/courses" element={<Courses />} />
+        <Route path="/teachers" element={<Teachers />} />
+        <Route path="/files" element={<Files />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ThemeProvider>
+  );
+};
+
+export default App;

@@ -1,13 +1,27 @@
 import { createTheme } from "@mui/material/styles"; // comment: MUI theme creator
+import type { Theme } from "@mui/material/styles"; // comment: type-only import
 
-const theme = createTheme({ // comment: create global theme
-  direction: "rtl", // comment: Hebrew support (optional but nice)
-  typography: { // comment: global typography settings
-    fontFamily: ["Arial", "sans-serif"].join(","), // comment: consistent font
-    h4: { fontWeight: 700 }, // comment: consistent page title weight
-    h6: { fontWeight: 600 }, // comment: app bar title weight
-  }, // comment: end typography
-  shape: { borderRadius: 12 }, // comment: consistent roundness
-}); // comment: end theme
+// comment: factory function for light / dark theme
+const getTheme = (mode: "light" | "dark"): Theme =>
+  createTheme({
+    direction: "rtl", // comment: Hebrew support
+    palette: {
+      mode,
+      primary: {
+        main: "#1976d2",
+      },
+      secondary: {
+        main: "#9c27b0",
+      },
+    },
+    typography: {
+      fontFamily: ["Arial", "sans-serif"].join(","),
+      h4: { fontWeight: 700 },
+      h6: { fontWeight: 600 },
+    },
+    shape: {
+      borderRadius: 12,
+    },
+  });
 
-export default theme; // comment: export theme
+export default getTheme;
