@@ -145,6 +145,7 @@ const Courses: React.FC = () => {
   const [errors, setErrors] = useState<CourseFormErrors>({});
 
   const isMobile = useMediaQuery("(max-width: 600px)");
+  console.log("isMobile =", isMobile, "width =", window.innerWidth);
 
 
   /* ---------- Load ---------- */
