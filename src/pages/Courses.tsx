@@ -12,6 +12,8 @@ import {
 import {
   Box,
   Button,
+  Card,
+  CardContent,
   Dialog,
   DialogActions,
   DialogContent,
@@ -27,6 +29,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
@@ -90,6 +94,46 @@ const validate = (
   return errors;
 };
 
+/* ---------- Mobile Card ---------- */
+
+const CourseCard = ({
+  course,
+  onEdit,
+  onDelete,
+}: {
+  course: Course;
+  onEdit: (c: Course) => void;
+  onDelete: (id: string) => void;
+}) => (
+  <Card>
+    <CardContent>
+      <Stack spacing={1}>
+        <Typography variant="h6">{course.code}</Typography>
+        <Typography>{course.name}</Typography>
+        <Typography variant="body2">
+          Credits: {course.credits}
+        </Typography>
+        <Typography variant="body2">
+          Teacher: {course.teacherName}
+        </Typography>
+
+        <Stack direction="row" spacing={1}>
+          <Button size="small" onClick={() => onEdit(course)}>
+            Edit
+          </Button>
+          <Button
+            size="small"
+            color="error"
+            onClick={() => onDelete(course.id!)}
+          >
+            Delete
+          </Button>
+        </Stack>
+      </Stack>
+    </CardContent>
+  </Card>
+);
+
 /* ---------- Component ---------- */
 
 const Courses: React.FC = () => {
@@ -101,7 +145,10 @@ const Courses: React.FC = () => {
   const [form, setForm] = useState<CourseFormState>(emptyForm);
   const [errors, setErrors] = useState<CourseFormErrors>({});
 
-  /* ---------- Load from Firestore ---------- */
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  /* ---------- Load ---------- */
 
   const loadCourses = async () => {
     const data = await getCourses();
@@ -196,49 +243,66 @@ const Courses: React.FC = () => {
         Total courses: {courses.length}
       </Typography>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Code</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Credits</TableCell>
-              <TableCell>Teacher</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {filteredCourses.length === 0 ? (
+      {isMobile ? (
+        <Stack spacing={2}>
+          {filteredCourses.length === 0 ? (
+            <Typography align="center">No courses found</Typography>
+          ) : (
+            filteredCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                onEdit={openEdit}
+                onDelete={onDelete}
+              />
+            ))
+          )}
+        </Stack>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No courses found
-                </TableCell>
+                <TableCell>Code</TableCell>
+                <TableCell>Name</TableCell>
+                <TableCell>Credits</TableCell>
+                <TableCell>Teacher</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
-            ) : (
-              filteredCourses.map((course) => (
-                <TableRow key={course.id}>
-                  <TableCell>{course.code}</TableCell>
-                  <TableCell>{course.name}</TableCell>
-                  <TableCell>{course.credits}</TableCell>
-                  <TableCell>{course.teacherName}</TableCell>
-                  <TableCell align="right">
-                    <IconButton onClick={() => openEdit(course)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      color="error"
-                      onClick={() => onDelete(course.id!)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+            </TableHead>
+
+            <TableBody>
+              {filteredCourses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    No courses found
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ) : (
+                filteredCourses.map((course) => (
+                  <TableRow key={course.id}>
+                    <TableCell>{course.code}</TableCell>
+                    <TableCell>{course.name}</TableCell>
+                    <TableCell>{course.credits}</TableCell>
+                    <TableCell>{course.teacherName}</TableCell>
+                    <TableCell align="right">
+                      <IconButton onClick={() => openEdit(course)}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        color="error"
+                        onClick={() => onDelete(course.id!)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
         <DialogTitle>
