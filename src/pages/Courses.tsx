@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PageLayout from "../components/PageLayout";
 import type { Course } from "../models/course";
-
 import {
   getCourses,
   createCourse,
@@ -29,7 +28,6 @@ import {
   TableRow,
   TextField,
   Typography,
-  useMediaQuery,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
@@ -144,10 +142,6 @@ const Courses: React.FC = () => {
   const [form, setForm] = useState<CourseFormState>(emptyForm);
   const [errors, setErrors] = useState<CourseFormErrors>({});
 
-  const isMobile = useMediaQuery("(max-width: 600px)");
-  console.log("isMobile =", isMobile, "width =", window.innerWidth);
-
-
   /* ---------- Load ---------- */
 
   const loadCourses = async () => {
@@ -159,7 +153,7 @@ const Courses: React.FC = () => {
     loadCourses();
   }, []);
 
-  /* ---------- Derived ---------- */
+  /* ---------- Filter ---------- */
 
   const filteredCourses = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -243,7 +237,8 @@ const Courses: React.FC = () => {
         Total courses: {courses.length}
       </Typography>
 
-      {isMobile ? (
+      {/* ===== MOBILE ===== */}
+      <Box sx={{ display: { xs: "block", sm: "none" } }}>
         <Stack spacing={2}>
           {filteredCourses.length === 0 ? (
             <Typography align="center">No courses found</Typography>
@@ -258,7 +253,10 @@ const Courses: React.FC = () => {
             ))
           )}
         </Stack>
-      ) : (
+      </Box>
+
+      {/* ===== DESKTOP ===== */}
+      <Box sx={{ display: { xs: "none", sm: "block" } }}>
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -302,7 +300,7 @@ const Courses: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-      )}
+      </Box>
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
         <DialogTitle>
@@ -310,49 +308,44 @@ const Courses: React.FC = () => {
         </DialogTitle>
 
         <DialogContent>
-          <Box sx={{ pt: 1 }}>
-            <Stack spacing={2}>
-              <TextField
-                name="code"
-                label="Course Code (CS101)"
-                value={form.code}
-                onChange={onChange}
-                error={Boolean(errors.code)}
-                helperText={errors.code}
-                fullWidth
-              />
-
-              <TextField
-                name="name"
-                label="Course Name"
-                value={form.name}
-                onChange={onChange}
-                error={Boolean(errors.name)}
-                helperText={errors.name}
-                fullWidth
-              />
-
-              <TextField
-                name="credits"
-                label="Credits"
-                value={form.credits}
-                onChange={onChange}
-                error={Boolean(errors.credits)}
-                helperText={errors.credits}
-                fullWidth
-              />
-
-              <TextField
-                name="teacherName"
-                label="Teacher Name"
-                value={form.teacherName}
-                onChange={onChange}
-                error={Boolean(errors.teacherName)}
-                helperText={errors.teacherName}
-                fullWidth
-              />
-            </Stack>
-          </Box>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              name="code"
+              label="Course Code (CS101)"
+              value={form.code}
+              onChange={onChange}
+              error={Boolean(errors.code)}
+              helperText={errors.code}
+              fullWidth
+            />
+            <TextField
+              name="name"
+              label="Course Name"
+              value={form.name}
+              onChange={onChange}
+              error={Boolean(errors.name)}
+              helperText={errors.name}
+              fullWidth
+            />
+            <TextField
+              name="credits"
+              label="Credits"
+              value={form.credits}
+              onChange={onChange}
+              error={Boolean(errors.credits)}
+              helperText={errors.credits}
+              fullWidth
+            />
+            <TextField
+              name="teacherName"
+              label="Teacher Name"
+              value={form.teacherName}
+              onChange={onChange}
+              error={Boolean(errors.teacherName)}
+              helperText={errors.teacherName}
+              fullWidth
+            />
+          </Stack>
         </DialogContent>
 
         <DialogActions>
