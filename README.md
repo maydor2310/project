@@ -49,3 +49,20 @@ The system allows managing academic courses with full CRUD functionality, respon
 
 ## 🗂️ Project Structure
 
+
+---
+
+## 🔐 Firebase & Environment Variables
+
+Firebase configuration is managed using **environment variables**.
+
+Example (`.env` – not committed):
+
+```env
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+
