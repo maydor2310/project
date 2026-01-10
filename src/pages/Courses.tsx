@@ -30,7 +30,6 @@ import {
   TextField,
   Typography,
   useMediaQuery,
-  useTheme,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
@@ -145,8 +144,8 @@ const Courses: React.FC = () => {
   const [form, setForm] = useState<CourseFormState>(emptyForm);
   const [errors, setErrors] = useState<CourseFormErrors>({});
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery("(max-width: 600px)");
+
 
   /* ---------- Load ---------- */
 
