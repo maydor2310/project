@@ -105,3 +105,4 @@ const Home: React.FC = () => {
 };
 
 export default Home; // export component
+// REVIEW: included for peer review

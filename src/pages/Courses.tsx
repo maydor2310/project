@@ -360,3 +360,4 @@ const Courses: React.FC = () => {
 };
 
 export default Courses;
+// REVIEW: included for peer review
