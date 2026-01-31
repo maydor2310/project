@@ -1,7 +1,8 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp } from "firebase/app"; // firebase core
+import { getFirestore } from "firebase/firestore"; // firestore
+import { getAuth } from "firebase/auth"; // authentication
 
-// comment: firebase configuration from env variables
+// firebase configuration from env variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -11,8 +12,12 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// comment: initialize firebase app
+// initialize firebase app
 const app = initializeApp(firebaseConfig);
 
-// comment: export firestore database
+// export firestore database
 export const db = getFirestore(app);
+
+// ✅ export authentication instance
+export const auth = getAuth(app);
+
