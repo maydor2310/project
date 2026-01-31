@@ -9,3 +9,4 @@ export const ThemeModeContext = createContext<ThemeModeContextType>({
   mode: "light",
   toggleTheme: () => {},
 });
+// REVIEW: included for peer review

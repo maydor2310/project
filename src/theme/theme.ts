@@ -25,3 +25,4 @@ const getTheme = (mode: "light" | "dark"): Theme =>
   });
 
 export default getTheme;
+// REVIEW: included for peer review

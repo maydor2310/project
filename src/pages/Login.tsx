@@ -5,3 +5,4 @@ const Courses: React.FC = () => { // comment: page component
 }; // comment: end component
 
 export default Courses; // comment: export
+// REVIEW: included for peer review

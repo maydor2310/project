@@ -7,3 +7,4 @@ function Footer() {
 }
 
 export default Footer;
+// REVIEW: included for peer review
