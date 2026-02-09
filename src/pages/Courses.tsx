@@ -1,38 +1,40 @@
-import React, { useEffect, useMemo, useState } from "react";
-import PageLayout from "../components/PageLayout";
-import type { Course } from "../models/course";
+import React, { useEffect, useMemo, useState } from "react"; // comment: react hooks
+import PageLayout from "../components/PageLayout"; // comment: layout wrapper
+import type { Course } from "../models/course"; // comment: course type
 import {
   getCourses,
   createCourse,
   updateCourse,
   removeCourse,
-} from "../services/courseService";
+} from "../services/courseService"; // comment: firestore service
 
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from "@mui/material";
+  Alert, // comment: error message
+  Box, // comment: layout box
+  Button, // comment: button
+  Card, // comment: card
+  CardContent, // comment: card content
+  Dialog, // comment: dialog
+  DialogActions, // comment: dialog actions
+  DialogContent, // comment: dialog content
+  DialogTitle, // comment: dialog title
+  IconButton, // comment: icon button
+  LinearProgress, // comment: loading indicator
+  Paper, // comment: paper
+  Stack, // comment: stack
+  Table, // comment: table
+  TableBody, // comment: table body
+  TableCell, // comment: table cell
+  TableContainer, // comment: table container
+  TableHead, // comment: table head
+  TableRow, // comment: table row
+  TextField, // comment: input
+  Typography, // comment: typography
+} from "@mui/material"; // comment: MUI
 
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add"; // comment: add icon
+import EditIcon from "@mui/icons-material/Edit"; // comment: edit icon
+import DeleteIcon from "@mui/icons-material/Delete"; // comment: delete icon
 
 /* ---------- Types ---------- */
 
@@ -97,31 +99,30 @@ const CourseCard = ({
   course,
   onEdit,
   onDelete,
+  disabled,
 }: {
   course: Course;
   onEdit: (c: Course) => void;
   onDelete: (id: string) => void;
+  disabled: boolean;
 }) => (
   <Card>
     <CardContent>
       <Stack spacing={1}>
         <Typography variant="h6">{course.code}</Typography>
         <Typography>{course.name}</Typography>
-        <Typography variant="body2">
-          Credits: {course.credits}
-        </Typography>
-        <Typography variant="body2">
-          Teacher: {course.teacherName}
-        </Typography>
+        <Typography variant="body2">Credits: {course.credits}</Typography>
+        <Typography variant="body2">Teacher: {course.teacherName}</Typography>
 
         <Stack direction="row" spacing={1}>
-          <Button size="small" onClick={() => onEdit(course)}>
+          <Button size="small" onClick={() => onEdit(course)} disabled={disabled}>
             Edit
           </Button>
           <Button
             size="small"
             color="error"
             onClick={() => onDelete(course.id!)}
+            disabled={disabled}
           >
             Delete
           </Button>
@@ -142,15 +143,27 @@ const Courses: React.FC = () => {
   const [form, setForm] = useState<CourseFormState>(emptyForm);
   const [errors, setErrors] = useState<CourseFormErrors>({});
 
+  const [isLoading, setIsLoading] = useState<boolean>(false); // comment: loading list
+  const [actionLoading, setActionLoading] = useState<boolean>(false); // comment: saving/deleting
+  const [loadError, setLoadError] = useState<string | null>(null); // comment: error text
+
   /* ---------- Load ---------- */
 
-  const loadCourses = async () => {
-    const data = await getCourses();
-    setCourses(data);
+  const loadCourses = async (): Promise<void> => {
+    setIsLoading(true); // comment: start loading
+    setLoadError(null); // comment: clear errors
+    try {
+      const data = await getCourses(); // comment: fetch courses
+      setCourses(data); // comment: set state
+    } catch {
+      setLoadError("Failed to load courses. Please try again."); // comment: set error
+    } finally {
+      setIsLoading(false); // comment: end loading
+    }
   };
 
   useEffect(() => {
-    loadCourses();
+    void loadCourses(); // comment: initial load
   }, []);
 
   /* ---------- Filter ---------- */
@@ -159,37 +172,35 @@ const Courses: React.FC = () => {
     const q = search.trim().toLowerCase();
     if (!q) return courses;
     return courses.filter(
-      (c) =>
-        c.code.toLowerCase().includes(q) ||
-        c.name.toLowerCase().includes(q)
+      (c) => c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
     );
   }, [courses, search]);
 
   /* ---------- Handlers ---------- */
 
-  const openAdd = () => {
+  const openAdd = (): void => {
     setEditingId(null);
     setForm(emptyForm());
     setErrors({});
     setDialogOpen(true);
   };
 
-  const openEdit = (course: Course) => {
+  const openEdit = (course: Course): void => {
     setEditingId(course.id!);
     setForm(toForm(course));
     setErrors({});
     setDialogOpen(true);
   };
 
-  const closeDialog = () => setDialogOpen(false);
+  const closeDialog = (): void => setDialogOpen(false);
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const onSave = async () => {
+  const onSave = async (): Promise<void> => {
     const validation = validate(form, courses, editingId);
     setErrors(validation);
     if (Object.keys(validation).length > 0) return;
@@ -202,19 +213,35 @@ const Courses: React.FC = () => {
       createdAt: Date.now(),
     };
 
-    if (editingId === null) {
-      await createCourse(payload);
-    } else {
-      await updateCourse(editingId, payload);
-    }
+    setActionLoading(true); // comment: start action loader
+    setLoadError(null); // comment: clear error
+    try {
+      if (editingId === null) {
+        await createCourse(payload);
+      } else {
+        await updateCourse(editingId, payload);
+      }
 
-    closeDialog();
-    loadCourses();
+      closeDialog();
+      await loadCourses();
+    } catch {
+      setLoadError("Failed to save course. Please try again.");
+    } finally {
+      setActionLoading(false); // comment: end action loader
+    }
   };
 
-  const onDelete = async (id: string) => {
-    await removeCourse(id);
-    loadCourses();
+  const onDelete = async (id: string): Promise<void> => {
+    setActionLoading(true); // comment: start action loader
+    setLoadError(null); // comment: clear error
+    try {
+      await removeCourse(id);
+      await loadCourses();
+    } catch {
+      setLoadError("Failed to delete course. Please try again.");
+    } finally {
+      setActionLoading(false); // comment: end action loader
+    }
   };
 
   /* ---------- Render ---------- */
@@ -227,11 +254,25 @@ const Courses: React.FC = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           fullWidth
+          disabled={isLoading || actionLoading}
         />
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={openAdd}
+          disabled={isLoading || actionLoading}
+        >
           Add Course
         </Button>
       </Stack>
+
+      {(isLoading || actionLoading) && <LinearProgress sx={{ mb: 2 }} />}
+
+      {loadError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {loadError}
+        </Alert>
+      )}
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         Total courses: {courses.length}
@@ -249,6 +290,7 @@ const Courses: React.FC = () => {
                 course={course}
                 onEdit={openEdit}
                 onDelete={onDelete}
+                disabled={isLoading || actionLoading}
               />
             ))
           )}
@@ -284,12 +326,16 @@ const Courses: React.FC = () => {
                     <TableCell>{course.credits}</TableCell>
                     <TableCell>{course.teacherName}</TableCell>
                     <TableCell align="right">
-                      <IconButton onClick={() => openEdit(course)}>
+                      <IconButton
+                        onClick={() => openEdit(course)}
+                        disabled={isLoading || actionLoading}
+                      >
                         <EditIcon />
                       </IconButton>
                       <IconButton
                         color="error"
-                        onClick={() => onDelete(course.id!)}
+                        onClick={() => void onDelete(course.id!)}
+                        disabled={isLoading || actionLoading}
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -317,6 +363,7 @@ const Courses: React.FC = () => {
               error={Boolean(errors.code)}
               helperText={errors.code}
               fullWidth
+              disabled={actionLoading}
             />
             <TextField
               name="name"
@@ -326,6 +373,7 @@ const Courses: React.FC = () => {
               error={Boolean(errors.name)}
               helperText={errors.name}
               fullWidth
+              disabled={actionLoading}
             />
             <TextField
               name="credits"
@@ -335,6 +383,7 @@ const Courses: React.FC = () => {
               error={Boolean(errors.credits)}
               helperText={errors.credits}
               fullWidth
+              disabled={actionLoading}
             />
             <TextField
               name="teacherName"
@@ -344,13 +393,16 @@ const Courses: React.FC = () => {
               error={Boolean(errors.teacherName)}
               helperText={errors.teacherName}
               fullWidth
+              disabled={actionLoading}
             />
           </Stack>
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={closeDialog}>Cancel</Button>
-          <Button variant="contained" onClick={onSave}>
+          <Button onClick={closeDialog} disabled={actionLoading}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={() => void onSave()} disabled={actionLoading}>
             Save
           </Button>
         </DialogActions>

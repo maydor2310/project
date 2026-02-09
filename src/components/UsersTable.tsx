@@ -1,6 +1,19 @@
 import React, { useEffect, useState } from "react"; // comment: react + hooks
-import { Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Stack } from "@mui/material"; // comment: MUI table
-import { STORAGE_KEY, type UserRow } from "./UserForm"; // comment: import key + type-only
+import {
+  Box, // comment: layout
+  Button, // comment: actions
+  LinearProgress, // comment: loading indicator
+  Paper, // comment: table container
+  Table, // comment: table
+  TableBody, // comment: body
+  TableCell, // comment: cell
+  TableContainer, // comment: container
+  TableHead, // comment: head
+  TableRow, // comment: row
+  Typography, // comment: text
+  Stack, // comment: layout
+} from "@mui/material"; // comment: MUI
+import { STORAGE_KEY, type UserRow } from "./UserForm"; // comment: import key + type
 
 const loadRows = (): UserRow[] => { // comment: read rows helper
   try { // comment: protect from errors
@@ -16,27 +29,43 @@ const loadRows = (): UserRow[] => { // comment: read rows helper
 
 const UsersTable: React.FC = () => { // comment: table component
   const [rows, setRows] = useState<UserRow[]>([]); // comment: rows state
+  const [isLoading, setIsLoading] = useState<boolean>(false); // comment: loading state
 
-  const refresh = (): void => { // comment: refresh from storage
-    setRows(loadRows()); // comment: set state from storage
+  const refresh = async (): Promise<void> => { // comment: refresh from storage
+    setIsLoading(true); // comment: start loader
+    try { // comment: try read
+      // comment: simulate async load so indicator is visible even for localStorage
+      await new Promise((resolve) => window.setTimeout(resolve, 250)); // comment: small delay
+      setRows(loadRows()); // comment: set state from storage
+    } finally { // comment: end loader
+      setIsLoading(false); // comment: stop loader
+    } // comment: end
   }; // comment: end refresh
 
-  const clear = (): void => { // comment: clear storage
-    localStorage.removeItem(STORAGE_KEY); // comment: remove key
-    refresh(); // comment: refresh UI
+  const clear = async (): Promise<void> => { // comment: clear storage
+    setIsLoading(true); // comment: start loader
+    try { // comment: try clear
+      localStorage.removeItem(STORAGE_KEY); // comment: remove key
+      await new Promise((resolve) => window.setTimeout(resolve, 250)); // comment: small delay
+      setRows(loadRows()); // comment: refresh UI
+    } finally { // comment: stop loader
+      setIsLoading(false); // comment: end loader
+    } // comment: end
   }; // comment: end clear
 
   useEffect(() => { // comment: initial load
-    refresh(); // comment: load once
+    void refresh(); // comment: load once
   }, []); // comment: run once
 
   return ( // comment: render
     <Box sx={{ p: 2 }}> {/* comment: wrapper */}
+      {isLoading && <LinearProgress sx={{ mb: 2 }} />} {/* comment: loading indicator */}
+
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}> {/* comment: top row */}
         <Typography variant="h5">Users Table</Typography> {/* comment: title */}
         <Stack direction="row" spacing={1}> {/* comment: buttons row */}
-          <Button variant="outlined" onClick={refresh}>Refresh</Button> {/* comment: refresh button */}
-          <Button variant="outlined" color="error" onClick={clear}>Clear</Button> {/* comment: clear button */}
+          <Button variant="outlined" onClick={() => void refresh()} disabled={isLoading}>Refresh</Button> {/* comment: refresh button */}
+          <Button variant="outlined" color="error" onClick={() => void clear()} disabled={isLoading}>Clear</Button> {/* comment: clear button */}
         </Stack>
       </Stack>
 

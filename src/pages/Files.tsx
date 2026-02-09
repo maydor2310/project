@@ -5,10 +5,12 @@ import type { Course } from "../models/course"; // comment: course type
 import type { CourseFile } from "../models/courseFile"; // comment: file type
 
 import {
+  Alert, // comment: alert for errors
   Box, // comment: layout box
   Button, // comment: button
   FormControl, // comment: form control
   InputLabel, // comment: label for select
+  LinearProgress, // comment: loading indicator
   MenuItem, // comment: select item
   Paper, // comment: paper container
   Select, // comment: select component
@@ -82,6 +84,8 @@ const Files: React.FC = () => { // comment: files page
   const [pickedFile, setPickedFile] = useState<File | null>(null); // comment: chosen file
   const [error, setError] = useState<string>(""); // comment: error message
 
+  const [actionLoading, setActionLoading] = useState<boolean>(false); // comment: upload/delete loading
+
   useEffect(() => { // comment: persist on change
     saveFiles(files); // comment: save
   }, [files]); // comment: dependency
@@ -134,39 +138,61 @@ const Files: React.FC = () => { // comment: files page
       return; // comment: stop
     } // comment: end size check
 
-    const dataUrl = await fileToDataUrl(pickedFile); // comment: convert file to base64
+    setActionLoading(true); // comment: start loader
+    try { // comment: try upload
+      const dataUrl = await fileToDataUrl(pickedFile); // comment: convert file to base64
 
-    const newFile: CourseFile = { // comment: create file record
-      id: generateId(), // comment: id
-      courseId: selectedCourseId, // comment: related course
-      displayName: displayName.trim(), // comment: display name
-      originalName: pickedFile.name, // comment: original name
-      mimeType: pickedFile.type || "application/octet-stream", // comment: mime
-      sizeBytes: pickedFile.size, // comment: size
-      dataUrl, // comment: base64 data url
-      createdAt: Date.now(), // comment: timestamp
-    }; // comment: end record
+      const newFile: CourseFile = { // comment: create file record
+        id: generateId(), // comment: id
+        courseId: selectedCourseId, // comment: related course
+        displayName: displayName.trim(), // comment: display name
+        originalName: pickedFile.name, // comment: original name
+        mimeType: pickedFile.type || "application/octet-stream", // comment: mime
+        sizeBytes: pickedFile.size, // comment: size
+        dataUrl, // comment: base64 data url
+        createdAt: Date.now(), // comment: timestamp
+      }; // comment: end record
 
-    setFiles((prev) => [newFile, ...prev]); // comment: add to list
-    resetForm(); // comment: reset after upload
+      setFiles((prev) => [newFile, ...prev]); // comment: add to list
+      resetForm(); // comment: reset after upload
+    } catch { // comment: catch error
+      setError("Upload failed. Please try again."); // comment: set error
+    } finally { // comment: always
+      setActionLoading(false); // comment: stop loader
+    } // comment: end try/catch
   }; // comment: end upload
 
   const handleDelete = (id: string): void => { // comment: delete handler
     const ok = window.confirm("Delete this file?"); // comment: confirm
     if (!ok) return; // comment: stop
-    setFiles((prev) => prev.filter((f) => f.id !== id)); // comment: remove
+
+    setActionLoading(true); // comment: start loader
+    try { // comment: try delete
+      setFiles((prev) => prev.filter((f) => f.id !== id)); // comment: remove
+    } finally { // comment: stop loader
+      setActionLoading(false); // comment: end loader
+    } // comment: end
   }; // comment: end delete
 
   return ( // comment: render
     <PageLayout title="Course Files Management">
+      {actionLoading && <LinearProgress sx={{ mb: 2 }} />} {/* comment: loader */}
+
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}> {/* comment: hint */}
         Upload files per course and manage existing files.
       </Typography>
 
+      {/* comment: error as alert for better UI */}
+      {error ? ( // comment: error display
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      ) : null}
+
       {/* ===== Upload Form ===== */}
       <Paper sx={{ p: 2, mb: 3 }}> {/* comment: form card */}
         <Stack spacing={2}> {/* comment: spacing */}
-          <FormControl fullWidth> {/* comment: course select wrapper */}
+          <FormControl fullWidth disabled={actionLoading}> {/* comment: course select wrapper */}
             <InputLabel id="course-select-label">Course</InputLabel> {/* comment: label */}
             <Select
               labelId="course-select-label" // comment: label id
@@ -193,6 +219,7 @@ const Files: React.FC = () => { // comment: files page
             value={displayName} // comment: controlled value
             onChange={(e) => setDisplayName(e.target.value)} // comment: update
             fullWidth // comment: full width
+            disabled={actionLoading} // comment: disable while loading
           />
 
           <Box> {/* comment: file input wrapper */}
@@ -200,6 +227,7 @@ const Files: React.FC = () => { // comment: files page
               component="label" // comment: label button
               variant="outlined" // comment: outlined style
               startIcon={<UploadFileIcon />} // comment: icon
+              disabled={actionLoading} // comment: disable while loading
             >
               Choose File
               <input type="file" hidden onChange={handlePickFile} /> {/* comment: hidden input */}
@@ -210,11 +238,11 @@ const Files: React.FC = () => { // comment: files page
             </Typography>
           </Box>
 
-          {error ? ( // comment: error display
-            <Typography color="error">{error}</Typography>
-          ) : null}
-
-          <Button variant="contained" onClick={handleUpload} disabled={courses.length === 0}> {/* comment: upload */}
+          <Button
+            variant="contained"
+            onClick={handleUpload}
+            disabled={courses.length === 0 || actionLoading}
+          > {/* comment: upload */}
             Upload
           </Button>
         </Stack>
@@ -258,7 +286,11 @@ const Files: React.FC = () => { // comment: files page
                   </TableCell>
                   <TableCell>{f.sizeBytes} bytes</TableCell> {/* comment: size */}
                   <TableCell align="right"> {/* comment: actions */}
-                    <IconButton aria-label="delete file" onClick={() => handleDelete(f.id)}> {/* comment: delete */}
+                    <IconButton
+                      aria-label="delete file"
+                      onClick={() => handleDelete(f.id)}
+                      disabled={actionLoading}
+                    > {/* comment: delete */}
                       <DeleteIcon /> {/* comment: delete icon */}
                     </IconButton>
                   </TableCell>

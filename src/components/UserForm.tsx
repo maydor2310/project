@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { Box, Button, Stack, TextField, Typography } from "@mui/material";
+import React, { useMemo, useState } from "react"; // comment: react hooks
+import { Box, Button, LinearProgress, Stack, TextField, Typography } from "@mui/material"; // comment: MUI
 
 export type UserRow = {
   id: string;
@@ -86,6 +86,8 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
   const [errors, setErrors] = useState<ErrorsState>({});
   const [submitTried, setSubmitTried] = useState<boolean>(false);
 
+  const [isSaving, setIsSaving] = useState<boolean>(false); // comment: saving loader
+
   const isValid = useMemo(() => Object.keys(validate(form)).length === 0, [form]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -94,7 +96,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setSubmitTried(true);
 
@@ -102,23 +104,31 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    const rows = loadRows();
-    const newRow: UserRow = {
-      id: createId(),
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      age: form.age.trim(),
-      city: form.city.trim(),
-      createdAt: Date.now(),
-    };
+    setIsSaving(true); // comment: start loader
+    try {
+      // comment: simulate async save so loader is visible
+      await new Promise((resolve) => window.setTimeout(resolve, 250)); // comment: small delay
 
-    const updated = [newRow, ...rows];
-    saveRows(updated);
-    setForm(createEmptyForm());
-    setErrors({});
-    setSubmitTried(false);
-    if (onSaved) onSaved();
+      const rows = loadRows();
+      const newRow: UserRow = {
+        id: createId(),
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        age: form.age.trim(),
+        city: form.city.trim(),
+        createdAt: Date.now(),
+      };
+
+      const updated = [newRow, ...rows];
+      saveRows(updated);
+      setForm(createEmptyForm());
+      setErrors({});
+      setSubmitTried(false);
+      if (onSaved) onSaved();
+    } finally {
+      setIsSaving(false); // comment: stop loader
+    }
   };
 
   const showError = (field: keyof FormState): boolean => {
@@ -131,6 +141,8 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
+      {isSaving && <LinearProgress sx={{ mb: 2 }} />} {/* comment: loading indicator */}
+
       <Typography variant="h5" sx={{ mb: 2 }}>
         הוספת משתמש
       </Typography>
@@ -144,6 +156,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("fullName")}
           helperText={helper("fullName", "2–40 תווים")}
           fullWidth
+          disabled={isSaving}
         />
 
         <TextField
@@ -154,6 +167,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("email")}
           helperText={helper("email", "name@example.com")}
           fullWidth
+          disabled={isSaving}
         />
 
         <TextField
@@ -164,6 +178,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("phone")}
           helperText={helper("phone", "9–10 ספרות")}
           fullWidth
+          disabled={isSaving}
         />
 
         <TextField
@@ -174,6 +189,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("age")}
           helperText={helper("age", "12–120")}
           fullWidth
+          disabled={isSaving}
         />
 
         <TextField
@@ -184,9 +200,10 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("city")}
           helperText={helper("city", "עד 30 תווים")}
           fullWidth
+          disabled={isSaving}
         />
 
-        <Button type="submit" variant="contained" disabled={!isValid}>
+        <Button type="submit" variant="contained" disabled={!isValid || isSaving}>
           שמור משתמש
         </Button>
       </Stack>

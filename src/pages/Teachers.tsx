@@ -2,11 +2,13 @@ import React, { useMemo, useState } from "react";
 import PageLayout from "../components/PageLayout";
 import { COURSES_KEY, TEACHERS_KEY } from "../constants/storageKeys";
 import {
+  Alert,
   Box,
   Button,
   Divider,
   FormControl,
   InputLabel,
+  LinearProgress,
   MenuItem,
   Paper,
   Select,
@@ -101,8 +103,32 @@ const validate = (form: FormState): ErrorsState => {
 };
 
 const Teachers: React.FC = () => {
-  const [courses] = useState<Course[]>(() => loadList<Course>(COURSES_KEY));
-  const [teachers, setTeachers] = useState<Teacher[]>(() => loadList<Teacher>(TEACHERS_KEY));
+  // loading states (simulated for localStorage operations)
+  const [isLoading, setIsLoading] = useState<boolean>(false); // comment: page load indicator
+  const [actionLoading, setActionLoading] = useState<boolean>(false); // comment: submit indicator
+  const [loadError, setLoadError] = useState<string | null>(null); // comment: error text
+
+  const [courses] = useState<Course[]>(() => {
+    setIsLoading(true); // comment: start loading
+    try {
+      return loadList<Course>(COURSES_KEY); // comment: load courses
+    } catch {
+      return []; // comment: fallback
+    } finally {
+      setIsLoading(false); // comment: end loading
+    }
+  });
+
+  const [teachers, setTeachers] = useState<Teacher[]>(() => {
+    setIsLoading(true); // comment: start loading
+    try {
+      return loadList<Teacher>(TEACHERS_KEY); // comment: load teachers
+    } catch {
+      return []; // comment: fallback
+    } finally {
+      setIsLoading(false); // comment: end loading
+    }
+  });
 
   const [form, setForm] = useState<FormState>(() => createEmptyForm());
   const [errors, setErrors] = useState<ErrorsState>({});
@@ -124,33 +150,49 @@ const Teachers: React.FC = () => {
     setErrors((prev) => ({ ...prev, courseIds: undefined }));
   };
 
-  const handleSubmit = (e: React.FormEvent): void => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    setLoadError(null); // comment: clear error
 
     const newErrors = validate(form);
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    const newTeacher: Teacher = {
-      id: createId(),
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      expertise: form.expertise.trim(),
-      courseIds: form.courseIds,
-      createdAt: Date.now(),
-    };
+    setActionLoading(true); // comment: start submit loading
+    try {
+      const newTeacher: Teacher = {
+        id: createId(),
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        expertise: form.expertise.trim(),
+        courseIds: form.courseIds,
+        createdAt: Date.now(),
+      };
 
-    const updated = [newTeacher, ...teachers];
-    setTeachers(updated);
-    saveList(TEACHERS_KEY, updated);
+      const updated = [newTeacher, ...teachers];
+      setTeachers(updated);
+      saveList(TEACHERS_KEY, updated);
 
-    setForm(createEmptyForm());
-    setErrors({});
+      setForm(createEmptyForm());
+      setErrors({});
+    } catch {
+      setLoadError("שמירה נכשלה. נסה שוב.");
+    } finally {
+      setActionLoading(false); // comment: end submit loading
+    }
   };
 
   return (
     <PageLayout title="ניהול מרצים">
+      {(isLoading || actionLoading) && <LinearProgress sx={{ mb: 2 }} />}
+
+      {loadError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {loadError}
+        </Alert>
+      )}
+
       <Paper sx={{ p: 2, mb: 3 }} component="form" onSubmit={handleSubmit}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           הוספת מרצה
@@ -165,6 +207,7 @@ const Teachers: React.FC = () => {
             error={Boolean(errors.fullName)}
             helperText={errors.fullName || "2–50 תווים"}
             fullWidth
+            disabled={actionLoading}
           />
 
           <TextField
@@ -175,6 +218,7 @@ const Teachers: React.FC = () => {
             error={Boolean(errors.email)}
             helperText={errors.email || "name@example.com"}
             fullWidth
+            disabled={actionLoading}
           />
 
           <TextField
@@ -185,6 +229,7 @@ const Teachers: React.FC = () => {
             error={Boolean(errors.phone)}
             helperText={errors.phone || "9–10 ספרות"}
             fullWidth
+            disabled={actionLoading}
           />
 
           <TextField
@@ -195,9 +240,10 @@ const Teachers: React.FC = () => {
             error={Boolean(errors.expertise)}
             helperText={errors.expertise || "עד 40 תווים"}
             fullWidth
+            disabled={actionLoading}
           />
 
-          <FormControl fullWidth error={Boolean(errors.courseIds)}>
+          <FormControl fullWidth error={Boolean(errors.courseIds)} disabled={actionLoading}>
             <InputLabel id="courses-select-label">שיוך לקורסים</InputLabel>
             <Select
               labelId="courses-select-label"
@@ -206,9 +252,11 @@ const Teachers: React.FC = () => {
               value={form.courseIds}
               onChange={(e) => handleCoursesChange(e.target.value as string[])}
               renderValue={(selected) =>
-                (selected as string[]).map((id) => courseLabelById.get(id) || "Unknown").join(", ")
+                (selected as string[])
+                  .map((id) => courseLabelById.get(id) || "Unknown")
+                  .join(", ")
               }
-              disabled={courses.length === 0}
+              disabled={courses.length === 0 || actionLoading}
             >
               {courses.length === 0 ? (
                 <MenuItem disabled value="">
@@ -223,12 +271,16 @@ const Teachers: React.FC = () => {
               )}
             </Select>
 
-            <Typography variant="caption" color={errors.courseIds ? "error" : "text.secondary"} sx={{ mt: 0.5 }}>
+            <Typography
+              variant="caption"
+              color={errors.courseIds ? "error" : "text.secondary"}
+              sx={{ mt: 0.5 }}
+            >
               {errors.courseIds || "בחר לפחות קורס אחד"}
             </Typography>
           </FormControl>
 
-          <Button type="submit" variant="contained" disabled={courses.length === 0}>
+          <Button type="submit" variant="contained" disabled={courses.length === 0 || actionLoading}>
             שמור מרצה
           </Button>
         </Stack>
@@ -250,12 +302,15 @@ const Teachers: React.FC = () => {
             {teachers.map((t) => (
               <Box key={t.id} sx={{ borderBottom: "1px solid #eee", pb: 1 }}>
                 <Typography fontWeight={600}>{t.fullName}</Typography>
-                <Typography variant="body2">{t.email} | {t.phone}</Typography>
+                <Typography variant="body2">
+                  {t.email} | {t.phone}
+                </Typography>
                 <Typography variant="body2" color="text.secondary">
                   התמחות: {t.expertise}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  קורסים: {t.courseIds.map((id) => courseLabelById.get(id) || "Unknown").join(", ")}
+                  קורסים:{" "}
+                  {t.courseIds.map((id) => courseLabelById.get(id) || "Unknown").join(", ")}
                 </Typography>
               </Box>
             ))}
