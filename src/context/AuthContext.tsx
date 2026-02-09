@@ -1,22 +1,26 @@
-
-import React, { createContext, useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../firebase/firebase";
 
-// comment: auth context type
 type AuthContextType = {
   user: User | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
-// comment: create context
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  login: async () => {},
+  logout: async () => {},
 });
 
-// comment: provider
+export const useAuth = (): AuthContextType => {
+  return useContext(AuthContext);
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -26,13 +30,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(currentUser);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const login = async (email: string, password: string): Promise<void> => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const logout = async (): Promise<void> => {
+    await signOut(auth);
+  };
+
+  const value = useMemo<AuthContextType>(() => {
+    return { user, loading, login, logout };
+  }, [user, loading]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

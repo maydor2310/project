@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from "react"; // comment: react + hooks
-import { Routes, Route, Navigate } from "react-router-dom"; // comment: routing
-import { ThemeProvider, CssBaseline } from "@mui/material"; // comment: MUI theming
-import getTheme from "./theme/theme"; // comment: theme factory
+import React, { useMemo, useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider, CssBaseline, LinearProgress } from "@mui/material";
+import getTheme from "./theme/theme";
 
-import { ThemeModeContext } from "./context/ThemeModeContext"; // ✅ חדש
+import { ThemeModeContext } from "./context/ThemeModeContext";
 
 import Header from "./components/Header";
 import Home from "./pages/Home";
@@ -13,13 +13,22 @@ import Courses from "./pages/Courses";
 import Teachers from "./pages/Teachers";
 import Files from "./pages/Files";
 import Login from "./pages/Login";
+import { useAuth } from "./context/AuthContext";
+
+const Protected: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <LinearProgress sx={{ mt: 1 }} />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  return <>{children}</>;
+};
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<"light" | "dark">(
     (localStorage.getItem("theme") as "light" | "dark") || "light"
   );
 
-  // ✅ כאן באמת משתמשים ב-setMode
   const toggleTheme = (): void => {
     setMode((prev) => {
       const next = prev === "light" ? "dark" : "light";
@@ -34,18 +43,45 @@ const App: React.FC = () => {
     <ThemeModeContext.Provider value={{ mode, toggleTheme }}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-
-        {/* ⬅️ Header נשאר בלי props */}
         <Header />
-
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/forms" element={<Forms />} />
           <Route path="/help" element={<Help />} />
-          <Route path="/courses" element={<Courses />} />
-          <Route path="/teachers" element={<Teachers />} />
-          <Route path="/files" element={<Files />} />
           <Route path="/login" element={<Login />} />
+
+          <Route
+            path="/forms"
+            element={
+              <Protected>
+                <Forms />
+              </Protected>
+            }
+          />
+          <Route
+            path="/courses"
+            element={
+              <Protected>
+                <Courses />
+              </Protected>
+            }
+          />
+          <Route
+            path="/teachers"
+            element={
+              <Protected>
+                <Teachers />
+              </Protected>
+            }
+          />
+          <Route
+            path="/files"
+            element={
+              <Protected>
+                <Files />
+              </Protected>
+            }
+          />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </ThemeProvider>
