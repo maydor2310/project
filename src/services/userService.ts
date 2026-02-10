@@ -1,49 +1,32 @@
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from "firebase/firestore";
-import { db, secondaryAuth } from "../firebase/firebase";
+import { auth, db } from "../firebase/firebase";
+import type { AppUser } from "../models/appUser";
 
-export type AppUser = {
-  id?: string;
-  authUid: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  age: string;
-  city: string;
-  createdAt: number;
+const usersRef = collection(db, "users");
+
+export const getUsers = async (): Promise<AppUser[]> => {
+  const q = query(usersRef, orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<AppUser, "id">),
+  }));
 };
 
-const ref = collection(db, "appUsers");
-
-export const getAppUsers = async (): Promise<AppUser[]> => {
-  const q = query(ref, orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AppUser, "id">) }));
+export const createUser = async (
+  email: string,
+  password: string,
+  userDoc: Omit<AppUser, "id" | "email">
+): Promise<void> => {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  await addDoc(usersRef, {
+    ...userDoc,
+    email,
+    uid: cred.user.uid,
+  });
 };
 
-export const createAppUserWithAuth = async (input: {
-  fullName: string;
-  email: string;
-  phone: string;
-  age: string;
-  city: string;
-  password: string;
-}): Promise<void> => {
-  const cred = await createUserWithEmailAndPassword(secondaryAuth, input.email, input.password);
-
-  const payload: Omit<AppUser, "id"> = {
-    authUid: cred.user.uid,
-    fullName: input.fullName,
-    email: input.email,
-    phone: input.phone,
-    age: input.age,
-    city: input.city,
-    createdAt: Date.now(),
-  };
-
-  await addDoc(ref, payload);
-};
-
-export const removeAppUser = async (id: string): Promise<void> => {
-  await deleteDoc(doc(db, "appUsers", id));
+export const deleteUser = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, "users", id));
 };

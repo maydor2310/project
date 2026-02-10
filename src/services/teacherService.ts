@@ -1,28 +1,22 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../firebase/firebase";
+import type { Teacher } from "../models/teacher";
 
-export type Teacher = {
-  id?: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  expertise: string;
-  courseIds: string[];
-  createdAt: number;
-};
-
-const ref = collection(db, "teachers");
+const teachersRef = collection(db, "teachers");
 
 export const getTeachers = async (): Promise<Teacher[]> => {
-  const q = query(ref, orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Teacher, "id">) }));
+  const q = query(teachersRef, orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<Teacher, "id">),
+  }));
 };
 
 export const createTeacher = async (teacher: Omit<Teacher, "id">): Promise<void> => {
-  await addDoc(ref, teacher);
+  await addDoc(teachersRef, teacher);
 };
 
-export const removeTeacher = async (id: string): Promise<void> => {
+export const deleteTeacher = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, "teachers", id));
 };
