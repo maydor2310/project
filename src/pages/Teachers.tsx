@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PageLayout from "../components/PageLayout";
-import { COURSES_KEY, TEACHERS_KEY } from "../constants/storageKeys";
 import {
   Alert,
   Box,
@@ -15,23 +14,12 @@ import {
   Stack,
   TextField,
   Typography,
+  IconButton,
 } from "@mui/material";
-
-type Course = {
-  id: string;
-  code: string;
-  name: string;
-};
-
-type Teacher = {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  expertise: string;
-  courseIds: string[];
-  createdAt: number;
-};
+import DeleteIcon from "@mui/icons-material/Delete";
+import type { Course } from "../models/course";
+import { getCourses } from "../services/courseService";
+import { createTeacher, getTeachers, removeTeacher, type Teacher } from "../services/teacherService";
 
 type FormState = {
   fullName: string;
@@ -42,28 +30,6 @@ type FormState = {
 };
 
 type ErrorsState = Partial<Record<keyof FormState, string>>;
-
-const createId = (): string => {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-};
-
-const loadList = <T,>(key: string): T[] => {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as T[]) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveList = (key: string, value: unknown): void => {
-  localStorage.setItem(key, JSON.stringify(value));
-};
 
 const createEmptyForm = (): FormState => ({
   fullName: "",
@@ -103,41 +69,37 @@ const validate = (form: FormState): ErrorsState => {
 };
 
 const Teachers: React.FC = () => {
-  // loading states (simulated for localStorage operations)
-  const [isLoading, setIsLoading] = useState<boolean>(false); // comment: page load indicator
-  const [actionLoading, setActionLoading] = useState<boolean>(false); // comment: submit indicator
-  const [loadError, setLoadError] = useState<string | null>(null); // comment: error text
-
-  const [courses] = useState<Course[]>(() => {
-    setIsLoading(true); // comment: start loading
-    try {
-      return loadList<Course>(COURSES_KEY); // comment: load courses
-    } catch {
-      return []; // comment: fallback
-    } finally {
-      setIsLoading(false); // comment: end loading
-    }
-  });
-
-  const [teachers, setTeachers] = useState<Teacher[]>(() => {
-    setIsLoading(true); // comment: start loading
-    try {
-      return loadList<Teacher>(TEACHERS_KEY); // comment: load teachers
-    } catch {
-      return []; // comment: fallback
-    } finally {
-      setIsLoading(false); // comment: end loading
-    }
-  });
-
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [form, setForm] = useState<FormState>(() => createEmptyForm());
   const [errors, setErrors] = useState<ErrorsState>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const courseLabelById = useMemo(() => {
     const map = new Map<string, string>();
-    courses.forEach((c) => map.set(c.id, `${c.code} - ${c.name}`));
+    courses.forEach((c) => map.set(c.id!, `${c.code} - ${c.name}`));
     return map;
   }, [courses]);
+
+  const loadAll = async (): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [c, t] = await Promise.all([getCourses(), getTeachers()]);
+      setCourses(c);
+      setTeachers(t);
+    } catch {
+      setError("טעינת נתונים נכשלה");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAll();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -152,44 +114,51 @@ const Teachers: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    setLoadError(null); // comment: clear error
+    setError(null);
 
     const newErrors = validate(form);
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    setActionLoading(true); // comment: start submit loading
+    setIsWorking(true);
     try {
-      const newTeacher: Teacher = {
-        id: createId(),
+      await createTeacher({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
         expertise: form.expertise.trim(),
         courseIds: form.courseIds,
         createdAt: Date.now(),
-      };
-
-      const updated = [newTeacher, ...teachers];
-      setTeachers(updated);
-      saveList(TEACHERS_KEY, updated);
-
+      });
       setForm(createEmptyForm());
       setErrors({});
+      await loadAll();
     } catch {
-      setLoadError("שמירה נכשלה. נסה שוב.");
+      setError("שמירה נכשלה");
     } finally {
-      setActionLoading(false); // comment: end submit loading
+      setIsWorking(false);
+    }
+  };
+
+  const onDelete = async (id: string): Promise<void> => {
+    setIsWorking(true);
+    try {
+      await removeTeacher(id);
+      await loadAll();
+    } catch {
+      setError("מחיקה נכשלה");
+    } finally {
+      setIsWorking(false);
     }
   };
 
   return (
     <PageLayout title="ניהול מרצים">
-      {(isLoading || actionLoading) && <LinearProgress sx={{ mb: 2 }} />}
+      {(isLoading || isWorking) && <LinearProgress sx={{ mb: 2 }} />}
 
-      {loadError && (
+      {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {loadError}
+          {error}
         </Alert>
       )}
 
@@ -207,7 +176,7 @@ const Teachers: React.FC = () => {
             error={Boolean(errors.fullName)}
             helperText={errors.fullName || "2–50 תווים"}
             fullWidth
-            disabled={actionLoading}
+            disabled={isWorking}
           />
 
           <TextField
@@ -218,7 +187,7 @@ const Teachers: React.FC = () => {
             error={Boolean(errors.email)}
             helperText={errors.email || "name@example.com"}
             fullWidth
-            disabled={actionLoading}
+            disabled={isWorking}
           />
 
           <TextField
@@ -229,7 +198,7 @@ const Teachers: React.FC = () => {
             error={Boolean(errors.phone)}
             helperText={errors.phone || "9–10 ספרות"}
             fullWidth
-            disabled={actionLoading}
+            disabled={isWorking}
           />
 
           <TextField
@@ -240,10 +209,10 @@ const Teachers: React.FC = () => {
             error={Boolean(errors.expertise)}
             helperText={errors.expertise || "עד 40 תווים"}
             fullWidth
-            disabled={actionLoading}
+            disabled={isWorking}
           />
 
-          <FormControl fullWidth error={Boolean(errors.courseIds)} disabled={actionLoading}>
+          <FormControl fullWidth error={Boolean(errors.courseIds)} disabled={isWorking}>
             <InputLabel id="courses-select-label">שיוך לקורסים</InputLabel>
             <Select
               labelId="courses-select-label"
@@ -256,19 +225,12 @@ const Teachers: React.FC = () => {
                   .map((id) => courseLabelById.get(id) || "Unknown")
                   .join(", ")
               }
-              disabled={courses.length === 0 || actionLoading}
             >
-              {courses.length === 0 ? (
-                <MenuItem disabled value="">
-                  אין קורסים (הוסף קורסים קודם)
+              {courses.map((c) => (
+                <MenuItem key={c.id} value={c.id!}>
+                  {c.code} - {c.name}
                 </MenuItem>
-              ) : (
-                courses.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.code} - {c.name}
-                  </MenuItem>
-                ))
-              )}
+              ))}
             </Select>
 
             <Typography
@@ -280,7 +242,7 @@ const Teachers: React.FC = () => {
             </Typography>
           </FormControl>
 
-          <Button type="submit" variant="contained" disabled={courses.length === 0 || actionLoading}>
+          <Button type="submit" variant="contained" disabled={isWorking}>
             שמור מרצה
           </Button>
         </Stack>
@@ -300,18 +262,37 @@ const Teachers: React.FC = () => {
         <Paper sx={{ p: 2 }}>
           <Stack spacing={1}>
             {teachers.map((t) => (
-              <Box key={t.id} sx={{ borderBottom: "1px solid #eee", pb: 1 }}>
-                <Typography fontWeight={600}>{t.fullName}</Typography>
-                <Typography variant="body2">
-                  {t.email} | {t.phone}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  התמחות: {t.expertise}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  קורסים:{" "}
-                  {t.courseIds.map((id) => courseLabelById.get(id) || "Unknown").join(", ")}
-                </Typography>
+              <Box
+                key={t.id}
+                sx={{
+                  borderBottom: "1px solid #eee",
+                  pb: 1,
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Box>
+                  <Typography fontWeight={600}>{t.fullName}</Typography>
+                  <Typography variant="body2">
+                    {t.email} | {t.phone}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    התמחות: {t.expertise}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    קורסים:{" "}
+                    {t.courseIds
+                      .map((id) => courseLabelById.get(id) || "Unknown")
+                      .join(", ")}
+                  </Typography>
+                </Box>
+                <IconButton
+                  color="error"
+                  onClick={() => void onDelete(t.id!)}
+                  disabled={isWorking}
+                >
+                  <DeleteIcon />
+                </IconButton>
               </Box>
             ))}
           </Stack>

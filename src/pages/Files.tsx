@@ -1,213 +1,194 @@
-import React, { useEffect, useMemo, useState } from "react"; // comment: react hooks
-import PageLayout from "../components/PageLayout"; // comment: layout
-import { COURSES_KEY, FILES_KEY } from "../constants/storageKeys"; // comment: storage keys
-import type { Course } from "../models/course"; // comment: course type
-import type { CourseFile } from "../models/courseFile"; // comment: file type
-
+import React, { useEffect, useMemo, useState } from "react";
+import PageLayout from "../components/PageLayout";
+import type { Course } from "../models/course";
 import {
-  Alert, // comment: alert for errors
-  Box, // comment: layout box
-  Button, // comment: button
-  FormControl, // comment: form control
-  InputLabel, // comment: label for select
-  LinearProgress, // comment: loading indicator
-  MenuItem, // comment: select item
-  Paper, // comment: paper container
-  Select, // comment: select component
-  Stack, // comment: stack layout
-  Table, // comment: table
-  TableBody, // comment: table body
-  TableCell, // comment: table cell
-  TableContainer, // comment: container
-  TableHead, // comment: head
-  TableRow, // comment: row
-  TextField, // comment: input
-  Typography, // comment: text
-  IconButton, // comment: icon button
-} from "@mui/material"; // comment: MUI
-import DeleteIcon from "@mui/icons-material/Delete"; // comment: delete icon
-import UploadFileIcon from "@mui/icons-material/UploadFile"; // comment: upload icon
+  Alert,
+  Box,
+  Button,
+  FormControl,
+  InputLabel,
+  LinearProgress,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  IconButton,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import { getCourses } from "../services/courseService";
+import {
+  createCourseFile,
+  getCourseFiles,
+  removeCourseFile,
+  type CourseFile,
+} from "../services/fileService";
 
-// comment: safe id generator
-const generateId = (): string => { // comment: gen id
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) { // comment: check uuid
-    return crypto.randomUUID(); // comment: uuid
-  } // comment: end if
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`; // comment: fallback
-}; // comment: end gen
+const fileToDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+};
 
-// comment: load courses from localStorage
-const loadCourses = (): Course[] => { // comment: load courses
-  try { // comment: try parse
-    const raw = localStorage.getItem(COURSES_KEY); // comment: read raw
-    if (!raw) return []; // comment: empty
-    const parsed = JSON.parse(raw); // comment: parse
-    return Array.isArray(parsed) ? (parsed as Course[]) : []; // comment: validate
-  } catch { // comment: catch
-    return []; // comment: fallback
-  } // comment: end
-}; // comment: end load
+const Files: React.FC = () => {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [files, setFiles] = useState<CourseFile[]>([]);
 
-// comment: load files from localStorage
-const loadFiles = (): CourseFile[] => { // comment: load files
-  try { // comment: try
-    const raw = localStorage.getItem(FILES_KEY); // comment: raw
-    if (!raw) return []; // comment: empty
-    const parsed = JSON.parse(raw); // comment: parse
-    return Array.isArray(parsed) ? (parsed as CourseFile[]) : []; // comment: validate
-  } catch { // comment: catch
-    return []; // comment: fallback
-  } // comment: end
-}; // comment: end load
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [displayName, setDisplayName] = useState<string>("");
+  const [pickedFile, setPickedFile] = useState<File | null>(null);
 
-// comment: save files to localStorage
-const saveFiles = (files: CourseFile[]): void => { // comment: save files
-  localStorage.setItem(FILES_KEY, JSON.stringify(files)); // comment: persist
-}; // comment: end save
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isWorking, setIsWorking] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-// comment: read file as data url (base64)
-const fileToDataUrl = (file: File): Promise<string> => { // comment: convert file
-  return new Promise((resolve, reject) => { // comment: promise
-    const reader = new FileReader(); // comment: file reader
-    reader.onload = () => resolve(String(reader.result)); // comment: resolve data url
-    reader.onerror = () => reject(new Error("Failed to read file")); // comment: reject
-    reader.readAsDataURL(file); // comment: read as data url
-  }); // comment: end promise
-}; // comment: end helper
+  const courseNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    courses.forEach((c) => map.set(c.id!, `${c.code} - ${c.name}`));
+    return map;
+  }, [courses]);
 
-const Files: React.FC = () => { // comment: files page
-  const [courses] = useState<Course[]>(() => loadCourses()); // comment: courses list (static)
-  const [files, setFiles] = useState<CourseFile[]>(() => loadFiles()); // comment: files state
+  const filesForSelectedCourse = useMemo(() => {
+    if (!selectedCourseId) return files;
+    return files.filter((f) => f.courseId === selectedCourseId);
+  }, [files, selectedCourseId]);
 
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(""); // comment: selected course
-  const [displayName, setDisplayName] = useState<string>(""); // comment: display name
-  const [pickedFile, setPickedFile] = useState<File | null>(null); // comment: chosen file
-  const [error, setError] = useState<string>(""); // comment: error message
+  const loadAll = async (): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [c, f] = await Promise.all([getCourses(), getCourseFiles()]);
+      setCourses(c);
+      setFiles(f);
+    } catch {
+      setError("טעינת נתונים נכשלה");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const [actionLoading, setActionLoading] = useState<boolean>(false); // comment: upload/delete loading
+  useEffect(() => {
+    void loadAll();
+  }, []);
 
-  useEffect(() => { // comment: persist on change
-    saveFiles(files); // comment: save
-  }, [files]); // comment: dependency
+  const handlePickFile = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setError(null);
+    const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+    setPickedFile(file);
+  };
 
-  const courseNameById = useMemo(() => { // comment: map course id -> display label
-    const map = new Map<string, string>(); // comment: init map
-    courses.forEach((c) => map.set(c.id, `${c.code} - ${c.name}`)); // comment: fill map
-    return map; // comment: return map
-  }, [courses]); // comment: deps
+  const resetForm = (): void => {
+    setDisplayName("");
+    setPickedFile(null);
+    setError(null);
+  };
 
-  const filesForSelectedCourse = useMemo(() => { // comment: filter files by selected course
-    if (!selectedCourseId) return files; // comment: if no selection show all
-    return files.filter((f) => f.courseId === selectedCourseId); // comment: filter
-  }, [files, selectedCourseId]); // comment: deps
+  const handleUpload = async (): Promise<void> => {
+    setError(null);
 
-  const handlePickFile = (e: React.ChangeEvent<HTMLInputElement>): void => { // comment: handle file input
-    setError(""); // comment: clear error
-    const file = e.target.files && e.target.files[0] ? e.target.files[0] : null; // comment: first file
-    setPickedFile(file); // comment: set chosen file
-  }; // comment: end pick handler
+    if (!selectedCourseId) {
+      setError("Please select a course");
+      return;
+    }
 
-  const resetForm = (): void => { // comment: reset inputs
-    setDisplayName(""); // comment: reset display name
-    setPickedFile(null); // comment: reset file
-    setError(""); // comment: clear error
-  }; // comment: end reset
+    if (!displayName.trim()) {
+      setError("Display name is required");
+      return;
+    }
 
-  const handleUpload = async (): Promise<void> => { // comment: upload handler
-    setError(""); // comment: clear error
+    if (!pickedFile) {
+      setError("Please choose a file");
+      return;
+    }
 
-    if (!selectedCourseId) { // comment: validate course selection
-      setError("Please select a course"); // comment: error message
-      return; // comment: stop
-    } // comment: end if
+    const MAX_BYTES = 2_000_000;
+    if (pickedFile.size > MAX_BYTES) {
+      setError("File is too large (max 2MB for this demo)");
+      return;
+    }
 
-    if (!displayName.trim()) { // comment: validate display name
-      setError("Display name is required"); // comment: error
-      return; // comment: stop
-    } // comment: end if
+    setIsWorking(true);
+    try {
+      const dataUrl = await fileToDataUrl(pickedFile);
 
-    if (!pickedFile) { // comment: validate file chosen
-      setError("Please choose a file"); // comment: error
-      return; // comment: stop
-    } // comment: end if
+      await createCourseFile({
+        courseId: selectedCourseId,
+        displayName: displayName.trim(),
+        originalName: pickedFile.name,
+        mimeType: pickedFile.type || "application/octet-stream",
+        sizeBytes: pickedFile.size,
+        dataUrl,
+        createdAt: Date.now(),
+      });
 
-    // comment: optional safety: limit size to avoid localStorage crash
-    const MAX_BYTES = 2_000_000; // comment: 2MB limit
-    if (pickedFile.size > MAX_BYTES) { // comment: size check
-      setError("File is too large for localStorage (max 2MB)"); // comment: size error
-      return; // comment: stop
-    } // comment: end size check
+      resetForm();
+      await loadAll();
+    } catch {
+      setError("Upload failed");
+    } finally {
+      setIsWorking(false);
+    }
+  };
 
-    setActionLoading(true); // comment: start loader
-    try { // comment: try upload
-      const dataUrl = await fileToDataUrl(pickedFile); // comment: convert file to base64
+  const handleDelete = async (id: string): Promise<void> => {
+    setError(null);
+    const ok = window.confirm("Delete this file?");
+    if (!ok) return;
 
-      const newFile: CourseFile = { // comment: create file record
-        id: generateId(), // comment: id
-        courseId: selectedCourseId, // comment: related course
-        displayName: displayName.trim(), // comment: display name
-        originalName: pickedFile.name, // comment: original name
-        mimeType: pickedFile.type || "application/octet-stream", // comment: mime
-        sizeBytes: pickedFile.size, // comment: size
-        dataUrl, // comment: base64 data url
-        createdAt: Date.now(), // comment: timestamp
-      }; // comment: end record
+    setIsWorking(true);
+    try {
+      await removeCourseFile(id);
+      await loadAll();
+    } catch {
+      setError("Delete failed");
+    } finally {
+      setIsWorking(false);
+    }
+  };
 
-      setFiles((prev) => [newFile, ...prev]); // comment: add to list
-      resetForm(); // comment: reset after upload
-    } catch { // comment: catch error
-      setError("Upload failed. Please try again."); // comment: set error
-    } finally { // comment: always
-      setActionLoading(false); // comment: stop loader
-    } // comment: end try/catch
-  }; // comment: end upload
-
-  const handleDelete = (id: string): void => { // comment: delete handler
-    const ok = window.confirm("Delete this file?"); // comment: confirm
-    if (!ok) return; // comment: stop
-
-    setActionLoading(true); // comment: start loader
-    try { // comment: try delete
-      setFiles((prev) => prev.filter((f) => f.id !== id)); // comment: remove
-    } finally { // comment: stop loader
-      setActionLoading(false); // comment: end loader
-    } // comment: end
-  }; // comment: end delete
-
-  return ( // comment: render
+  return (
     <PageLayout title="Course Files Management">
-      {actionLoading && <LinearProgress sx={{ mb: 2 }} />} {/* comment: loader */}
+      {(isLoading || isWorking) && <LinearProgress sx={{ mb: 2 }} />}
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}> {/* comment: hint */}
-        Upload files per course and manage existing files.
-      </Typography>
-
-      {/* comment: error as alert for better UI */}
-      {error ? ( // comment: error display
+      {error ? (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       ) : null}
 
-      {/* ===== Upload Form ===== */}
-      <Paper sx={{ p: 2, mb: 3 }}> {/* comment: form card */}
-        <Stack spacing={2}> {/* comment: spacing */}
-          <FormControl fullWidth disabled={actionLoading}> {/* comment: course select wrapper */}
-            <InputLabel id="course-select-label">Course</InputLabel> {/* comment: label */}
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Upload files per course and manage existing files.
+      </Typography>
+
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack spacing={2}>
+          <FormControl fullWidth disabled={isWorking}>
+            <InputLabel id="course-select-label">Course</InputLabel>
             <Select
-              labelId="course-select-label" // comment: label id
-              label="Course" // comment: label text
-              value={selectedCourseId} // comment: selected value
-              onChange={(e) => setSelectedCourseId(String(e.target.value))} // comment: set course
+              labelId="course-select-label"
+              label="Course"
+              value={selectedCourseId}
+              onChange={(e) => setSelectedCourseId(String(e.target.value))}
             >
-              {courses.length === 0 ? ( // comment: empty courses state
-                <MenuItem value="" disabled> {/* comment: disabled item */}
+              {courses.length === 0 ? (
+                <MenuItem value="" disabled>
                   No courses yet (add courses first)
                 </MenuItem>
               ) : (
-                courses.map((c) => ( // comment: course options
-                  <MenuItem key={c.id} value={c.id}> {/* comment: one option */}
-                    {c.code} - {c.name} {/* comment: label */}
+                courses.map((c) => (
+                  <MenuItem key={c.id} value={c.id!}>
+                    {c.code} - {c.name}
                   </MenuItem>
                 ))
               )}
@@ -215,83 +196,88 @@ const Files: React.FC = () => { // comment: files page
           </FormControl>
 
           <TextField
-            label="Display Name" // comment: display name label
-            value={displayName} // comment: controlled value
-            onChange={(e) => setDisplayName(e.target.value)} // comment: update
-            fullWidth // comment: full width
-            disabled={actionLoading} // comment: disable while loading
+            label="Display Name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            fullWidth
+            disabled={isWorking}
           />
 
-          <Box> {/* comment: file input wrapper */}
+          <Box>
             <Button
-              component="label" // comment: label button
-              variant="outlined" // comment: outlined style
-              startIcon={<UploadFileIcon />} // comment: icon
-              disabled={actionLoading} // comment: disable while loading
+              component="label"
+              variant="outlined"
+              startIcon={<UploadFileIcon />}
+              disabled={isWorking}
             >
               Choose File
-              <input type="file" hidden onChange={handlePickFile} /> {/* comment: hidden input */}
+              <input type="file" hidden onChange={handlePickFile} />
             </Button>
 
-            <Typography variant="body2" sx={{ mt: 1 }}> {/* comment: file chosen label */}
-              {pickedFile ? `Selected: ${pickedFile.name} (${pickedFile.size} bytes)` : "No file selected"}
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              {pickedFile
+                ? `Selected: ${pickedFile.name} (${pickedFile.size} bytes)`
+                : "No file selected"}
             </Typography>
           </Box>
 
           <Button
             variant="contained"
-            onClick={handleUpload}
-            disabled={courses.length === 0 || actionLoading}
-          > {/* comment: upload */}
+            onClick={() => void handleUpload()}
+            disabled={courses.length === 0 || isWorking}
+          >
             Upload
           </Button>
         </Stack>
       </Paper>
 
-      {/* ===== Files Table ===== */}
-      <Typography variant="h6" sx={{ mb: 1 }}> {/* comment: title */}
+      <Typography variant="h6" sx={{ mb: 1 }}>
         Existing Files
       </Typography>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}> {/* comment: info */}
-        Showing: {selectedCourseId ? "selected course files" : "all files"} — Total: {filesForSelectedCourse.length}
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Showing: {selectedCourseId ? "selected course files" : "all files"} — Total:{" "}
+        {filesForSelectedCourse.length}
       </Typography>
 
-      <TableContainer component={Paper}> {/* comment: table wrapper */}
-        <Table> {/* comment: table */}
-          <TableHead> {/* comment: header */}
-            <TableRow> {/* comment: row */}
-              <TableCell>Course</TableCell> {/* comment: course column */}
-              <TableCell>Display Name</TableCell> {/* comment: display column */}
-              <TableCell>Original File</TableCell> {/* comment: original name */}
-              <TableCell>Size</TableCell> {/* comment: size */}
-              <TableCell align="right">Actions</TableCell> {/* comment: actions */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Course</TableCell>
+              <TableCell>Display Name</TableCell>
+              <TableCell>Original File</TableCell>
+              <TableCell>Size</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
 
-          <TableBody> {/* comment: body */}
-            {filesForSelectedCourse.length === 0 ? ( // comment: empty state
-              <TableRow> {/* comment: empty row */}
-                <TableCell colSpan={5} align="center">No files found.</TableCell> {/* comment: message */}
+          <TableBody>
+            {filesForSelectedCourse.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  No files found.
+                </TableCell>
               </TableRow>
             ) : (
-              filesForSelectedCourse.map((f) => ( // comment: map rows
-                <TableRow key={f.id}> {/* comment: row */}
-                  <TableCell>{courseNameById.get(f.courseId) || "Unknown course"}</TableCell> {/* comment: course label */}
-                  <TableCell>{f.displayName}</TableCell> {/* comment: display */}
+              filesForSelectedCourse.map((f) => (
+                <TableRow key={f.id}>
+                  <TableCell>{courseNameById.get(f.courseId) || "Unknown course"}</TableCell>
+                  <TableCell>{f.displayName}</TableCell>
                   <TableCell>
-                    <a href={f.dataUrl} download={f.originalName}> {/* comment: download link */}
+                    <a href={f.dataUrl} download={f.originalName}>
                       {f.originalName}
                     </a>
                   </TableCell>
-                  <TableCell>{f.sizeBytes} bytes</TableCell> {/* comment: size */}
-                  <TableCell align="right"> {/* comment: actions */}
+                  <TableCell>{f.sizeBytes} bytes</TableCell>
+                  <TableCell align="right">
                     <IconButton
                       aria-label="delete file"
-                      onClick={() => handleDelete(f.id)}
-                      disabled={actionLoading}
-                    > {/* comment: delete */}
-                      <DeleteIcon /> {/* comment: delete icon */}
+                      onClick={() => void handleDelete(f.id!)}
+                      disabled={isWorking}
+                      color="error"
+                    >
+                      <DeleteIcon />
                     </IconButton>
                   </TableCell>
                 </TableRow>

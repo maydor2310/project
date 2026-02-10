@@ -1,111 +1,126 @@
-import React, { useEffect, useState } from "react"; // comment: react + hooks
+import React, { useEffect, useState } from "react";
 import {
-  Box, // comment: layout
-  Button, // comment: actions
-  LinearProgress, // comment: loading indicator
-  Paper, // comment: table container
-  Table, // comment: table
-  TableBody, // comment: body
-  TableCell, // comment: cell
-  TableContainer, // comment: container
-  TableHead, // comment: head
-  TableRow, // comment: row
-  Typography, // comment: text
-  Stack, // comment: layout
-} from "@mui/material"; // comment: MUI
-import { STORAGE_KEY, type UserRow } from "./UserForm"; // comment: import key + type
+  Alert,
+  Box,
+  Button,
+  LinearProgress,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  IconButton,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { getAppUsers, removeAppUser, type AppUser } from "../services/userService";
 
-const loadRows = (): UserRow[] => { // comment: read rows helper
-  try { // comment: protect from errors
-    const raw = localStorage.getItem(STORAGE_KEY); // comment: read storage
-    if (!raw) return []; // comment: empty -> none
-    const parsed = JSON.parse(raw); // comment: parse json
-    if (!Array.isArray(parsed)) return []; // comment: validate
-    return parsed as UserRow[]; // comment: return
-  } catch { // comment: error
-    return []; // comment: fallback
-  } // comment: end try/catch
-}; // comment: end loadRows
+const UsersTable: React.FC = () => {
+  const [rows, setRows] = useState<AppUser[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isWorking, setIsWorking] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-const UsersTable: React.FC = () => { // comment: table component
-  const [rows, setRows] = useState<UserRow[]>([]); // comment: rows state
-  const [isLoading, setIsLoading] = useState<boolean>(false); // comment: loading state
+  const refresh = async (): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getAppUsers();
+      setRows(data);
+    } catch {
+      setError("Failed to load users");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const refresh = async (): Promise<void> => { // comment: refresh from storage
-    setIsLoading(true); // comment: start loader
-    try { // comment: try read
-      // comment: simulate async load so indicator is visible even for localStorage
-      await new Promise((resolve) => window.setTimeout(resolve, 250)); // comment: small delay
-      setRows(loadRows()); // comment: set state from storage
-    } finally { // comment: end loader
-      setIsLoading(false); // comment: stop loader
-    } // comment: end
-  }; // comment: end refresh
+  useEffect(() => {
+    void refresh();
+  }, []);
 
-  const clear = async (): Promise<void> => { // comment: clear storage
-    setIsLoading(true); // comment: start loader
-    try { // comment: try clear
-      localStorage.removeItem(STORAGE_KEY); // comment: remove key
-      await new Promise((resolve) => window.setTimeout(resolve, 250)); // comment: small delay
-      setRows(loadRows()); // comment: refresh UI
-    } finally { // comment: stop loader
-      setIsLoading(false); // comment: end loader
-    } // comment: end
-  }; // comment: end clear
+  const onDelete = async (id: string): Promise<void> => {
+    const ok = window.confirm("Delete this user record?");
+    if (!ok) return;
 
-  useEffect(() => { // comment: initial load
-    void refresh(); // comment: load once
-  }, []); // comment: run once
+    setIsWorking(true);
+    setError(null);
+    try {
+      await removeAppUser(id);
+      await refresh();
+    } catch {
+      setError("Failed to delete user");
+    } finally {
+      setIsWorking(false);
+    }
+  };
 
-  return ( // comment: render
-    <Box sx={{ p: 2 }}> {/* comment: wrapper */}
-      {isLoading && <LinearProgress sx={{ mb: 2 }} />} {/* comment: loading indicator */}
+  return (
+    <Box sx={{ p: 2 }}>
+      {(isLoading || isWorking) ? <LinearProgress sx={{ mb: 2 }} /> : null}
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}> {/* comment: top row */}
-        <Typography variant="h5">Users Table</Typography> {/* comment: title */}
-        <Stack direction="row" spacing={1}> {/* comment: buttons row */}
-          <Button variant="outlined" onClick={() => void refresh()} disabled={isLoading}>Refresh</Button> {/* comment: refresh button */}
-          <Button variant="outlined" color="error" onClick={() => void clear()} disabled={isLoading}>Clear</Button> {/* comment: clear button */}
-        </Stack>
+      {error ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      ) : null}
+
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="h5">Users Table</Typography>
+        <Button variant="outlined" onClick={() => void refresh()} disabled={isLoading || isWorking}>
+          Refresh
+        </Button>
       </Stack>
 
-      <TableContainer component={Paper}> {/* comment: table paper */}
-        <Table> {/* comment: table */}
-          <TableHead> {/* comment: header */}
-            <TableRow> {/* comment: header row */}
-              <TableCell>Full Name</TableCell> {/* comment: column */}
-              <TableCell>Email</TableCell> {/* comment: column */}
-              <TableCell>Phone</TableCell> {/* comment: column */}
-              <TableCell>Age</TableCell> {/* comment: column */}
-              <TableCell>City</TableCell> {/* comment: column */}
-              <TableCell>Created</TableCell> {/* comment: column */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Full Name</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Phone</TableCell>
+              <TableCell>Age</TableCell>
+              <TableCell>City</TableCell>
+              <TableCell>Created</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
 
-          <TableBody> {/* comment: body */}
-            {rows.length === 0 ? ( // comment: empty state
-              <TableRow> {/* comment: empty row */}
-                <TableCell colSpan={6} align="center"> {/* comment: cell span */}
-                  No data in localStorage yet. Fill the form first.
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  No users yet.
                 </TableCell>
               </TableRow>
-            ) : ( // comment: render rows
-              rows.map((r) => ( // comment: map rows
-                <TableRow key={r.id}> {/* comment: row */}
-                  <TableCell>{r.fullName}</TableCell> {/* comment: cell */}
-                  <TableCell>{r.email}</TableCell> {/* comment: cell */}
-                  <TableCell>{r.phone}</TableCell> {/* comment: cell */}
-                  <TableCell>{r.age}</TableCell> {/* comment: cell */}
-                  <TableCell>{r.city}</TableCell> {/* comment: cell */}
-                  <TableCell>{new Date(r.createdAt).toLocaleString()}</TableCell> {/* comment: date */}
+            ) : (
+              rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{r.fullName}</TableCell>
+                  <TableCell>{r.email}</TableCell>
+                  <TableCell>{r.phone}</TableCell>
+                  <TableCell>{r.age}</TableCell>
+                  <TableCell>{r.city}</TableCell>
+                  <TableCell>{new Date(r.createdAt).toLocaleString()}</TableCell>
+                  <TableCell align="right">
+                    <IconButton
+                      color="error"
+                      onClick={() => void onDelete(r.id!)}
+                      disabled={isLoading || isWorking}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
-              )) // comment: end map
-            )} {/* comment: end conditional */}
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>
-    </Box> // comment: end wrapper
-  ); // comment: end return
-}; // comment: end component
+    </Box>
+  );
+};
 
-export default UsersTable; // comment: export
+export default UsersTable;

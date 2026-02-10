@@ -1,19 +1,17 @@
-import React, { useMemo, useState } from "react"; // comment: react hooks
-import { Box, Button, LinearProgress, Stack, TextField, Typography } from "@mui/material"; // comment: MUI
+import React, { useMemo, useState } from "react";
+import { Alert, Box, Button, LinearProgress, Stack, TextField, Typography } from "@mui/material";
+import { createAppUserWithAuth } from "../services/userService";
 
-export type UserRow = {
-  id: string;
+type FormState = {
   fullName: string;
   email: string;
   phone: string;
   age: string;
   city: string;
-  createdAt: number;
+  password: string;
+  confirmPassword: string;
 };
 
-export const STORAGE_KEY = "forms_users_v1";
-
-type FormState = Omit<UserRow, "id" | "createdAt">;
 type ErrorsState = Partial<Record<keyof FormState, string>>;
 
 const createEmptyForm = (): FormState => ({
@@ -22,29 +20,9 @@ const createEmptyForm = (): FormState => ({
   phone: "",
   age: "",
   city: "",
+  password: "",
+  confirmPassword: "",
 });
-
-const loadRows = (): UserRow[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as UserRow[]) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveRows = (rows: UserRow[]): void => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-};
-
-const createId = (): string => {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-};
 
 const validate = (form: FormState): ErrorsState => {
   const errors: ErrorsState = {};
@@ -74,6 +52,12 @@ const validate = (form: FormState): ErrorsState => {
   if (!city) errors.city = "עיר היא שדה חובה";
   else if (city.length > 30) errors.city = "עיר עד 30 תווים";
 
+  if (!form.password) errors.password = "סיסמה היא שדה חובה";
+  else if (form.password.length < 6) errors.password = "סיסמה חייבת להיות לפחות 6 תווים";
+
+  if (!form.confirmPassword) errors.confirmPassword = "אימות סיסמה הוא שדה חובה";
+  else if (form.confirmPassword !== form.password) errors.confirmPassword = "הסיסמאות לא תואמות";
+
   return errors;
 };
 
@@ -85,8 +69,8 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
   const [form, setForm] = useState<FormState>(() => createEmptyForm());
   const [errors, setErrors] = useState<ErrorsState>({});
   const [submitTried, setSubmitTried] = useState<boolean>(false);
-
-  const [isSaving, setIsSaving] = useState<boolean>(false); // comment: saving loader
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isValid = useMemo(() => Object.keys(validate(form)).length === 0, [form]);
 
@@ -99,35 +83,32 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setSubmitTried(true);
+    setError(null);
 
     const newErrors = validate(form);
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    setIsSaving(true); // comment: start loader
+    setIsSubmitting(true);
     try {
-      // comment: simulate async save so loader is visible
-      await new Promise((resolve) => window.setTimeout(resolve, 250)); // comment: small delay
-
-      const rows = loadRows();
-      const newRow: UserRow = {
-        id: createId(),
+      await createAppUserWithAuth({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
         age: form.age.trim(),
         city: form.city.trim(),
-        createdAt: Date.now(),
-      };
+        password: form.password,
+      });
 
-      const updated = [newRow, ...rows];
-      saveRows(updated);
       setForm(createEmptyForm());
       setErrors({});
       setSubmitTried(false);
       if (onSaved) onSaved();
+    } catch (err: unknown) {
+      const msg = (err as any)?.code || (err as any)?.message || "Failed to create user";
+      setError(String(msg));
     } finally {
-      setIsSaving(false); // comment: stop loader
+      setIsSubmitting(false);
     }
   };
 
@@ -141,11 +122,17 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
-      {isSaving && <LinearProgress sx={{ mb: 2 }} />} {/* comment: loading indicator */}
+      {isSubmitting ? <LinearProgress sx={{ mb: 2 }} /> : null}
 
       <Typography variant="h5" sx={{ mb: 2 }}>
         הוספת משתמש
       </Typography>
+
+      {error ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      ) : null}
 
       <Stack spacing={2}>
         <TextField
@@ -156,7 +143,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("fullName")}
           helperText={helper("fullName", "2–40 תווים")}
           fullWidth
-          disabled={isSaving}
+          disabled={isSubmitting}
         />
 
         <TextField
@@ -167,7 +154,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("email")}
           helperText={helper("email", "name@example.com")}
           fullWidth
-          disabled={isSaving}
+          disabled={isSubmitting}
         />
 
         <TextField
@@ -178,7 +165,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("phone")}
           helperText={helper("phone", "9–10 ספרות")}
           fullWidth
-          disabled={isSaving}
+          disabled={isSubmitting}
         />
 
         <TextField
@@ -189,7 +176,7 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("age")}
           helperText={helper("age", "12–120")}
           fullWidth
-          disabled={isSaving}
+          disabled={isSubmitting}
         />
 
         <TextField
@@ -200,10 +187,34 @@ const UserForm: React.FC<Props> = ({ onSaved }) => {
           error={showError("city")}
           helperText={helper("city", "עד 30 תווים")}
           fullWidth
-          disabled={isSaving}
+          disabled={isSubmitting}
         />
 
-        <Button type="submit" variant="contained" disabled={!isValid || isSaving}>
+        <TextField
+          name="password"
+          label="סיסמה"
+          type="password"
+          value={form.password}
+          onChange={handleChange}
+          error={showError("password")}
+          helperText={helper("password", "לפחות 6 תווים")}
+          fullWidth
+          disabled={isSubmitting}
+        />
+
+        <TextField
+          name="confirmPassword"
+          label="אימות סיסמה"
+          type="password"
+          value={form.confirmPassword}
+          onChange={handleChange}
+          error={showError("confirmPassword")}
+          helperText={helper("confirmPassword", "חייב להתאים לסיסמה")}
+          fullWidth
+          disabled={isSubmitting}
+        />
+
+        <Button type="submit" variant="contained" disabled={!isValid || isSubmitting}>
           שמור משתמש
         </Button>
       </Stack>
