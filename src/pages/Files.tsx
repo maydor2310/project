@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PageLayout from "../components/PageLayout";
 import type { Course } from "../models/course";
+import type { CourseFile } from "../models/courseFile";
+import { getCourses } from "../services/courseService";
+import { createCourseFile, getCourseFiles, removeCourseFile } from "../services/fileService";
 import {
   Alert,
   Box,
@@ -24,13 +27,6 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import { getCourses } from "../services/courseService";
-import {
-  createCourseFile,
-  getCourseFiles,
-  removeCourseFile,
-  type CourseFile,
-} from "../services/fileService";
 
 const fileToDataUrl = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -273,7 +269,7 @@ const Files: React.FC = () => {
                   <TableCell align="right">
                     <IconButton
                       aria-label="delete file"
-                      onClick={() => void handleDelete(f.id!)}
+                      onClick={() => void handleDelete(f.id)}
                       disabled={isWorking}
                       color="error"
                     >

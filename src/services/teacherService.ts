@@ -17,6 +17,6 @@ export const createTeacher = async (teacher: Omit<Teacher, "id">): Promise<void>
   await addDoc(teachersRef, teacher);
 };
 
-export const deleteTeacher = async (id: string): Promise<void> => {
+export const removeTeacher = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, "teachers", id));
 };

@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PageLayout from "../components/PageLayout";
+import type { Course } from "../models/course";
+import type { Teacher } from "../models/teacher";
+import { getCourses } from "../services/courseService";
+import { createTeacher, getTeachers, removeTeacher } from "../services/teacherService";
 import {
   Alert,
   Box,
@@ -14,12 +18,7 @@ import {
   Stack,
   TextField,
   Typography,
-  IconButton,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import type { Course } from "../models/course";
-import { getCourses } from "../services/courseService";
-import { createTeacher, getTeachers, removeTeacher, type Teacher } from "../services/teacherService";
 
 type FormState = {
   fullName: string;
@@ -71,10 +70,12 @@ const validate = (form: FormState): ErrorsState => {
 const Teachers: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+
   const [form, setForm] = useState<FormState>(() => createEmptyForm());
   const [errors, setErrors] = useState<ErrorsState>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [isWorking, setIsWorking] = useState(false);
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isWorking, setIsWorking] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const courseLabelById = useMemo(() => {
@@ -130,6 +131,7 @@ const Teachers: React.FC = () => {
         courseIds: form.courseIds,
         createdAt: Date.now(),
       });
+
       setForm(createEmptyForm());
       setErrors({});
       await loadAll();
@@ -141,7 +143,11 @@ const Teachers: React.FC = () => {
   };
 
   const onDelete = async (id: string): Promise<void> => {
+    const ok = window.confirm("למחוק את המרצה?");
+    if (!ok) return;
+
     setIsWorking(true);
+    setError(null);
     try {
       await removeTeacher(id);
       await loadAll();
@@ -154,13 +160,13 @@ const Teachers: React.FC = () => {
 
   return (
     <PageLayout title="ניהול מרצים">
-      {(isLoading || isWorking) && <LinearProgress sx={{ mb: 2 }} />}
+      {(isLoading || isWorking) ? <LinearProgress sx={{ mb: 2 }} /> : null}
 
-      {error && (
+      {error ? (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-      )}
+      ) : null}
 
       <Paper sx={{ p: 2, mb: 3 }} component="form" onSubmit={handleSubmit}>
         <Typography variant="h6" sx={{ mb: 2 }}>
@@ -222,15 +228,22 @@ const Teachers: React.FC = () => {
               onChange={(e) => handleCoursesChange(e.target.value as string[])}
               renderValue={(selected) =>
                 (selected as string[])
-                  .map((id) => courseLabelById.get(id) || "Unknown")
+                  .map((cid) => courseLabelById.get(cid) || "Unknown")
                   .join(", ")
               }
+              disabled={courses.length === 0 || isWorking}
             >
-              {courses.map((c) => (
-                <MenuItem key={c.id} value={c.id!}>
-                  {c.code} - {c.name}
+              {courses.length === 0 ? (
+                <MenuItem disabled value="">
+                  אין קורסים (הוסף קורסים קודם)
                 </MenuItem>
-              ))}
+              ) : (
+                courses.map((c) => (
+                  <MenuItem key={c.id} value={c.id!}>
+                    {c.code} - {c.name}
+                  </MenuItem>
+                ))
+              )}
             </Select>
 
             <Typography
@@ -242,7 +255,7 @@ const Teachers: React.FC = () => {
             </Typography>
           </FormControl>
 
-          <Button type="submit" variant="contained" disabled={isWorking}>
+          <Button type="submit" variant="contained" disabled={courses.length === 0 || isWorking}>
             שמור מרצה
           </Button>
         </Stack>
@@ -262,37 +275,28 @@ const Teachers: React.FC = () => {
         <Paper sx={{ p: 2 }}>
           <Stack spacing={1}>
             {teachers.map((t) => (
-              <Box
-                key={t.id}
-                sx={{
-                  borderBottom: "1px solid #eee",
-                  pb: 1,
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Box>
-                  <Typography fontWeight={600}>{t.fullName}</Typography>
-                  <Typography variant="body2">
-                    {t.email} | {t.phone}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    התמחות: {t.expertise}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    קורסים:{" "}
-                    {t.courseIds
-                      .map((id) => courseLabelById.get(id) || "Unknown")
-                      .join(", ")}
-                  </Typography>
+              <Box key={t.id} sx={{ borderBottom: "1px solid #eee", pb: 1 }}>
+                <Typography fontWeight={600}>{t.fullName}</Typography>
+                <Typography variant="body2">
+                  {t.email} | {t.phone}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  התמחות: {t.expertise}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  קורסים: {t.courseIds.map((cid) => courseLabelById.get(cid) || "Unknown").join(", ")}
+                </Typography>
+
+                <Box sx={{ mt: 1 }}>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={() => void onDelete(t.id)}
+                    disabled={isWorking}
+                  >
+                    מחיקה
+                  </Button>
                 </Box>
-                <IconButton
-                  color="error"
-                  onClick={() => void onDelete(t.id!)}
-                  disabled={isWorking}
-                >
-                  <DeleteIcon />
-                </IconButton>
               </Box>
             ))}
           </Stack>
