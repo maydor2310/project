@@ -13,63 +13,65 @@ import {
   TableHead,
   TableRow,
   Typography,
-  IconButton,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import { getAppUsers, removeAppUser, type AppUser } from "../services/userService";
+import { getUsers, removeUser } from "../services/userService";
+import type { User } from "../models/user";
 
 const UsersTable: React.FC = () => {
-  const [rows, setRows] = useState<AppUser[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isWorking, setIsWorking] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
-  const refresh = async (): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
+  const loadUsers = async (): Promise<void> => {
+    setError("");
+    setLoading(true);
     try {
-      const data = await getAppUsers();
-      setRows(data);
+      const data = await getUsers();
+      setUsers(data);
     } catch {
       setError("Failed to load users");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string): Promise<void> => {
+    const ok = window.confirm("Delete this user?");
+    if (!ok) return;
+
+    setError("");
+    setLoading(true);
+    try {
+      await removeUser(id);
+      await loadUsers();
+    } catch {
+      setError("Failed to delete user");
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    void refresh();
+    void loadUsers();
   }, []);
-
-  const onDelete = async (id: string): Promise<void> => {
-    const ok = window.confirm("Delete this user record?");
-    if (!ok) return;
-
-    setIsWorking(true);
-    setError(null);
-    try {
-      await removeAppUser(id);
-      await refresh();
-    } catch {
-      setError("Failed to delete user");
-    } finally {
-      setIsWorking(false);
-    }
-  };
 
   return (
     <Box sx={{ p: 2 }}>
-      {(isLoading || isWorking) ? <LinearProgress sx={{ mb: 2 }} /> : null}
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-      {error ? (
+      {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-      ) : null}
+      )}
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Users Table</Typography>
-        <Button variant="outlined" onClick={() => void refresh()} disabled={isLoading || isWorking}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="h5">Users</Typography>
+        <Button variant="outlined" onClick={() => void loadUsers()} disabled={loading}>
           Refresh
         </Button>
       </Stack>
@@ -81,37 +83,38 @@ const UsersTable: React.FC = () => {
               <TableCell>Full Name</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Phone</TableCell>
-              <TableCell>Age</TableCell>
-              <TableCell>City</TableCell>
+              <TableCell>UID</TableCell>
               <TableCell>Created</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {rows.length === 0 ? (
+            {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No users yet.
+                <TableCell colSpan={6} align="center">
+                  No users found
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>{r.fullName}</TableCell>
-                  <TableCell>{r.email}</TableCell>
-                  <TableCell>{r.phone}</TableCell>
-                  <TableCell>{r.age}</TableCell>
-                  <TableCell>{r.city}</TableCell>
-                  <TableCell>{new Date(r.createdAt).toLocaleString()}</TableCell>
+              users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell>{u.fullName}</TableCell>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell>{u.phone}</TableCell>
+                  <TableCell>{u.uid}</TableCell>
+                  <TableCell>
+                    {new Date(u.createdAt).toLocaleString()}
+                  </TableCell>
                   <TableCell align="right">
-                    <IconButton
+                    <Button
+                      variant="outlined"
                       color="error"
-                      onClick={() => void onDelete(r.id!)}
-                      disabled={isLoading || isWorking}
+                      onClick={() => void handleDelete(u.id)}
+                      disabled={loading}
                     >
-                      <DeleteIcon />
-                    </IconButton>
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
